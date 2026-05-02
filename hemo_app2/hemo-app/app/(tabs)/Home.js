@@ -1,8 +1,39 @@
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { router } from "expo-router"; 
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Linking,
+  Modal,
+} from "react-native";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FontAwesome } from "@expo/vector-icons";
+import { router } from "expo-router";
+
+/* ===================== HOME ===================== */
 
 export default function Home() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // 📌 checa primeira vez
+  useEffect(() => {
+    const checkFirstTime = async () => {
+      const seen = await AsyncStorage.getItem("onboarding_done");
+      if (!seen) setShowOnboarding(true);
+    };
+
+    checkFirstTime();
+  }, []);
+
+  // 🚀 iniciar onboarding
+  const startOnboarding = async () => {
+    setShowOnboarding(false);
+    await AsyncStorage.setItem("onboarding_done", "true");
+    router.push("/steps/Step1");
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>HemoConexão</Text>
@@ -18,48 +49,69 @@ export default function Home() {
 
         <Item icon="heart" text="Histórico" />
 
-        <Item icon="question" text="Dúvidas"  onPress={() => router.push("/FAQ")} />
-
-        <Item 
-          icon="comments" 
-          text="Chat" 
-          onPress={() => router.push("/chat")} 
+        <Item
+          icon="question"
+          text="Dúvidas"
+          onPress={() => router.push("/FAQ")}
         />
+
+        <Item
+          icon="comments"
+          text="Chat"
+          onPress={() => router.push("/chat")}
+        />
+
         <Item
           icon="map"
           text="Mapa"
           onPress={() => router.push("/map")}
         />
-        <Item icon="tint" text="Estoque" onPress={() => router.push("/Stock")} />
+
+        <Item
+          icon="tint"
+          text="Estoque"
+          onPress={() => router.push("/Stock")}
+        />
       </View>
+
+      {/* ================= ONBOARDING POPUP ================= */}
+      <Modal visible={showOnboarding} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+
+            <Text style={styles.modalTitle}>
+              Bem-vinda ao HemoConexão ❤️
+            </Text>
+
+            <Text style={styles.modalText}>
+              Vamos te guiar em 5 passos rápidos para aprender a usar o app.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={startOnboarding}
+            >
+              <Text style={styles.buttonText}>Start</Text>
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
+/* ===================== ITEM ===================== */
+
 function Item({ icon, text, link, route, onPress }) {
-
   const handlePress = async () => {
+    if (onPress) return onPress();
 
-    // 👉 se tiver onPress, usa ele primeiro
-    if (onPress) {
-      onPress();
-      return;
-    }
+    if (route) return router.push(route);
 
-    // 👉 navegação interna via route
-    if (route) {
-      router.push(route);
-      return;
-    }
-
-    // 👉 link externo
     if (link) {
       const supported = await Linking.canOpenURL(link);
-      if (supported) {
-        await Linking.openURL(link);
-      } else {
-        console.log("Não foi possível abrir o link");
-      }
+      if (supported) await Linking.openURL(link);
     }
   };
 
@@ -71,16 +123,74 @@ function Item({ icon, text, link, route, onPress }) {
   );
 }
 
+/* ===================== STYLES ===================== */
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 20, color: '#E30613', marginBottom: 20 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+
+  title: {
+    fontSize: 20,
+    color: "#E30613",
+    marginBottom: 20,
+  },
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
   card: {
-    width: '30%',
-    backgroundColor: '#f5f5f5',
+    width: "30%",
+    backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 15
-  }
+    alignItems: "center",
+    marginBottom: 15,
+  },
+
+  /* ===== ONBOARDING ===== */
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modal: {
+    width: "80%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 15,
+    alignItems: "center",
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+
+  modalText: {
+    textAlign: "center",
+    marginBottom: 15,
+  },
+
+  button: {
+    backgroundColor: "#E30613",
+    padding: 10,
+    borderRadius: 10,
+    width: "100%",
+    alignItems: "center",
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
 });
