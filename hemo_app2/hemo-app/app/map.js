@@ -1,4 +1,4 @@
-import { 
+/*import { 
   View, 
   StyleSheet, 
   FlatList, 
@@ -81,7 +81,7 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* 📋 LISTA */}
+    
       <FlatList
         data={centers}
         keyExtractor={(item) => item.id.toString()}
@@ -89,12 +89,11 @@ export default function MapScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             
-            {/* Nome do local */}
             <TouchableOpacity onPress={() => goToLocation(item)}>
               <Text style={styles.title}>{item.title}</Text>
             </TouchableOpacity>
 
-            {/* Botão de rota */}
+           
             <TouchableOpacity
               style={styles.button}
               onPress={() => openRoute(item.latitude, item.longitude)}
@@ -147,3 +146,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+*/

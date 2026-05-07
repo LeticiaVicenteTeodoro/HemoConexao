@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated } from "react-native";
+import { Text, TouchableOpacity, Animated } from "react-native";
 import { router } from "expo-router";
+import onboardingData from "./onboardingData";
 
 export default function Step3() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -13,6 +14,16 @@ export default function Step3() {
     }).start();
   }, []);
 
+  const aceitar = () => {
+    onboardingData.notifications = true;
+    router.push("/steps/Step4");
+  };
+
+  const recusar = () => {
+    onboardingData.notifications = false;
+    router.push("/steps/Step4");
+  };
+
   return (
     <Animated.View
       style={{
@@ -23,12 +34,19 @@ export default function Step3() {
         backgroundColor: "white",
       }}
     >
-      <Text style={{ fontSize: 18, fontWeight: "bold", color: "#dc2626", marginBottom: 30 }}>
+      <Text
+        style={{
+          fontSize: 18,
+          fontWeight: "bold",
+          color: "#dc2626",
+          marginBottom: 30,
+        }}
+      >
         Deseja receber notificações?
       </Text>
 
       <TouchableOpacity
-        onPress={() => router.push("/steps/Step4")}
+        onPress={aceitar}
         style={{
           backgroundColor: "#dc2626",
           paddingVertical: 12,
@@ -42,7 +60,7 @@ export default function Step3() {
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => router.push("/steps/Step4")}
+        onPress={recusar}
         style={{
           backgroundColor: "#dc2626",
           paddingVertical: 12,

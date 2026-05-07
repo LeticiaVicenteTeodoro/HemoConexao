@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated } from "react-native";
+import { Text, TouchableOpacity, Animated } from "react-native";
 import { router } from "expo-router";
+import onboardingData from "./onboardingData";
 
 export default function Step2() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -13,6 +14,16 @@ export default function Step2() {
     }).start();
   }, []);
 
+  const continuar = () => {
+    onboardingData.acceptedOnboarding = true;
+    router.push("/steps/Step3");
+  };
+
+  const pular = () => {
+    onboardingData.acceptedOnboarding = false;
+    router.replace("/(tabs)/Home");
+  };
+
   return (
     <Animated.View
       style={{
@@ -23,16 +34,29 @@ export default function Step2() {
         backgroundColor: "white",
       }}
     >
-      <Text style={{ fontSize: 20, fontWeight: "bold", color: "#dc2626", marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "bold",
+          color: "#dc2626",
+          marginBottom: 16,
+        }}
+      >
         Olá, estou aqui pra te ajudar!
       </Text>
 
-      <Text style={{ fontSize: 16, color: "#666", marginBottom: 30 }}>
+      <Text
+        style={{
+          fontSize: 16,
+          color: "#666",
+          marginBottom: 30,
+        }}
+      >
         Gostaria de fazer algumas perguntas para deixar sua experiência ainda melhor.
       </Text>
 
       <TouchableOpacity
-        onPress={() => router.push("/steps/Step3")}
+        onPress={continuar}
         style={{
           backgroundColor: "#dc2626",
           paddingVertical: 12,
@@ -45,9 +69,11 @@ export default function Step2() {
         </Text>
       </TouchableOpacity>
 
-      <Text style={{ textAlign: "center", color: "#999" }}>
-        Talvez mais tarde
-      </Text>
+      <TouchableOpacity onPress={pular}>
+        <Text style={{ textAlign: "center", color: "#999" }}>
+          Talvez mais tarde
+        </Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 }

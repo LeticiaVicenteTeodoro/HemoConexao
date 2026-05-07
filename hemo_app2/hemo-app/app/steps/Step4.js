@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated } from "react-native";
+import { Text, TouchableOpacity, Animated } from "react-native";
 import { router } from "expo-router";
+import onboardingData from "./onboardingData";
 
 export default function Step4() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -12,6 +13,11 @@ export default function Step4() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  const escolherSexo = (sexo) => {
+    onboardingData.sexo = sexo;
+    router.push("/steps/Step5");
+  };
 
   return (
     <Animated.View
@@ -25,12 +31,19 @@ export default function Step4() {
         opacity: fadeAnim,
       }}
     >
-      <Text style={{ color: "white", fontSize: 20, marginBottom: 30, textAlign: "center" }}>
+      <Text
+        style={{
+          color: "white",
+          fontSize: 20,
+          marginBottom: 30,
+          textAlign: "center",
+        }}
+      >
         Qual seu sexo biológico?
       </Text>
 
       <TouchableOpacity
-        onPress={() => router.push("/steps/Step5")}
+        onPress={() => escolherSexo("feminino")}
         style={{
           backgroundColor: "white",
           paddingVertical: 12,
@@ -45,7 +58,7 @@ export default function Step4() {
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => router.push("/steps/Step5")}
+        onPress={() => escolherSexo("masculino")}
         style={{
           backgroundColor: "white",
           paddingVertical: 12,

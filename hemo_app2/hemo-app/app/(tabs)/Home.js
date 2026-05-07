@@ -12,25 +12,47 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-/* ===================== HOME ===================== */
-
 export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // 📌 checa primeira vez
   useEffect(() => {
-    const checkFirstTime = async () => {
-      const seen = await AsyncStorage.getItem("onboarding_done");
-      if (!seen) setShowOnboarding(true);
+    const checkOnboarding = async () => {
+      try {
+        // 1. check local
+        const seen = await AsyncStorage.getItem("onboarding_done");
+
+        if (seen) {
+          setShowOnboarding(false);
+          return;
+        }
+
+        // 2. fallback backend (SQLite)
+        const res = await fetch(
+          "http://192.168.1.20:3000/user/user@email.com"
+        );
+
+        const user = await res.json();
+
+        if (user) {
+          // já existe no banco → marca localmente
+          await AsyncStorage.setItem("onboarding_done", "true");
+          setShowOnboarding(false);
+        } else {
+          // não existe → mostra onboarding
+          setShowOnboarding(true);
+        }
+      } catch (err) {
+        console.log("Erro onboarding check:", err);
+        setShowOnboarding(true); // fallback seguro
+      }
     };
 
-    checkFirstTime();
+    checkOnboarding();
   }, []);
 
   // 🚀 iniciar onboarding
   const startOnboarding = async () => {
     setShowOnboarding(false);
-    await AsyncStorage.setItem("onboarding_done", "true");
     router.push("/steps/Step1");
   };
 
@@ -74,26 +96,21 @@ export default function Home() {
         />
       </View>
 
-      {/* ================= ONBOARDING POPUP ================= */}
+      {/* ONBOARDING MODAL */}
       <Modal visible={showOnboarding} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modal}>
-
             <Text style={styles.modalTitle}>
               Bem-vinda ao HemoConexão ❤️
             </Text>
 
             <Text style={styles.modalText}>
-              Vamos te guiar em 5 passos rápidos para aprender a usar o app.
+              Vamos te guiar em 5 passos rápidos.
             </Text>
 
-            <TouchableOpacity
-              style={styles.button}
-              onPress={startOnboarding}
-            >
+            <TouchableOpacity style={styles.button} onPress={startOnboarding}>
               <Text style={styles.buttonText}>Start</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
@@ -101,8 +118,7 @@ export default function Home() {
   );
 }
 
-/* ===================== ITEM ===================== */
-
+/* ITEM */
 function Item({ icon, text, link, route, onPress }) {
   const handlePress = async () => {
     if (onPress) return onPress();
@@ -123,13 +139,9 @@ function Item({ icon, text, link, route, onPress }) {
   );
 }
 
-/* ===================== STYLES ===================== */
-
+/* STYLES (igual ao seu) */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
+  container: { flex: 1, padding: 20 },
 
   title: {
     fontSize: 20,
@@ -151,8 +163,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
-
-  /* ===== ONBOARDING ===== */
 
   overlay: {
     flex: 1,
