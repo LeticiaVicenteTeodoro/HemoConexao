@@ -1,10 +1,25 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { router } from "expo-router";
 
 export default function Profile() {
+  const navigation = useNavigation();
+
+  function handleLogout() {
+    // aqui você depois pode limpar token/AsyncStorage
+    router.replace("/");
+  }
+
   return (
     <View style={styles.container}>
-
       {/* FOTO + INFO */}
       <View style={styles.header}>
         <Image
@@ -23,12 +38,23 @@ export default function Profile() {
         <Item icon="map-marker" label="Cidade" value="Poços de Caldas" />
       </View>
 
-      {/* BOTÃO */}
-      <TouchableOpacity style={styles.button}>
+      {/* EDITAR PERFIL */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate("EditProfile")}
+      >
         <FontAwesome name="edit" size={18} color="white" />
         <Text style={styles.buttonText}> Editar perfil</Text>
       </TouchableOpacity>
 
+      {/* LOGOUT */}
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <FontAwesome name="sign-out" size={18} color="white" />
+        <Text style={styles.logoutText}> Sair da conta</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -109,6 +135,21 @@ const styles = StyleSheet.create({
   },
 
   buttonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+
+  logoutButton: {
+    flexDirection: "row",
+    backgroundColor: "#333",
+    padding: 14,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  logoutText: {
     color: "white",
     fontWeight: "bold",
   },
