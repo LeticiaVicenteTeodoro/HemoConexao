@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
+import threading
+import subprocess
 
 app = FastAPI()
 
-# 🔥 CORS (OBRIGATÓRIO pro React Native / Expo Web)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,9 +15,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Caminho do JSON
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "estoque.json")
+SCRAPER_PATH = os.path.join(BASE_DIR, "scraper.py")
+
+
+# 🔥 RODA O SCRAPER SEM TRAVAR A API
+def run_scraper_async():
+    def task():
+        try:
+            subprocess.run(["python", SCRAPER_PATH], check=True)
+        except Exception as e:
+            print("Erro no scraper:", e)
+
+    threading.Thread(target=task).start()
 
 
 @app.get("/")
@@ -26,6 +38,10 @@ def home():
 
 @app.get("/estoque")
 def get_estoque():
+
+    # 🔥 dispara scraper em background
+    run_scraper_async()
+
     try:
         if not os.path.exists(DATA_PATH):
             return {"erro": "arquivo não encontrado"}
