@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,82 +8,111 @@ import {
   Alert,
 } from "react-native";
 import { router } from "expo-router";
-import useGoogleAuth from "./auth/useGoogleAuth";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
 
-export default function Login() {
+WebBrowser.maybeCompleteAuthSession();
+
+type GoogleUser = {
+  id: string;
+  name: string;
+  email: string;
+  picture?: string;
+};
+
+export default function Index() {
+  const [user, setUser] = useState<GoogleUser | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   /**
-   * LOGIN TRADICIONAL (temporário)
+   * Gera automaticamente o redirect URI.
+   * Para web, normalmente será http://localhost:8081
+   * Para mobile, usará o scheme definido no app.json.
+   */
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "googlelogintest",
+  });
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId:
+      "375042939186-al9bdulqdqidmasap427j5m5mc6qf7hb.apps.googleusercontent.com",
+
+  androidClientId:
+    "375042939186-jtqvn9ir8btnr1ijkfdmumgrs22cp38j.apps.googleusercontent.com",
+    
+    redirectUri,
+  });
+
+  /**
+   * Processa a resposta do Google após login
+   */
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (response?.type !== "success") return;
+
+      try {
+        setLoading(true);
+
+        const token = response.authentication?.accessToken;
+
+        if (!token) {
+          Alert.alert("Erro", "Token não encontrado.");
+          return;
+        }
+
+        const res = await fetch(
+          "https://www.googleapis.com/userinfo/v2/me",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data: GoogleUser = await res.json();
+
+        console.log("USUÁRIO GOOGLE:", data);
+
+        // Salva dados no estado
+        setUser(data);
+        setEmail(data.email);
+
+        Alert.alert(
+          "Login realizado",
+          `Bem-vindo(a), ${data.name}!`
+        );
+
+        // Navega para a Home
+        router.replace("/Home");
+      } catch (error) {
+        console.log("Erro:", error);
+        Alert.alert("Erro", String(error));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [response]);
+
+  /**
+   * Login tradicional (temporário)
    */
   const handleLogin = () => {
-    // por enquanto sem backend
     router.replace("/Home");
   };
 
   /**
-   * LOGIN COM GOOGLE
-   */
-  const { promptAsync, loading } = useGoogleAuth(async (user: any) => {
-    try {
-      console.log("Usuário Google:", user);
-
-      // envia os dados do Google para o backend SQLite
-      const response = await fetch(
-        "http://192.168.1.20:3000/login-google",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            google_id: user.id,
-            email: user.email,
-            name: user.name,
-            photo: user.picture || null,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        Alert.alert(
-          "Login realizado",
-          `Bem-vinda, ${user.name}!`
-        );
-
-        // salva email para usar no onboarding
-        setEmail(user.email);
-
-        // após login, vai para a Home
-        router.replace("/Home");
-      } else {
-        Alert.alert(
-          "Erro",
-          result.error || "Não foi possível fazer login."
-        );
-      }
-    } catch (error) {
-      console.log("Erro no login Google:", error);
-
-      Alert.alert(
-        "Erro",
-        "Não foi possível conectar ao servidor."
-      );
-    }
-  });
-
-  /**
-   * Dispara o login com Google
+   * Inicia o login com Google
    */
   const handleGoogleLogin = async () => {
     try {
       await promptAsync();
     } catch (error) {
       console.log("Erro ao abrir login Google:", error);
-
       Alert.alert(
         "Erro",
         "Não foi possível iniciar o login com Google."
@@ -91,10 +120,20 @@ export default function Login() {
     }
   };
 
+  /**
+   * Logout local
+   */
+  const handleSignOut = () => {
+    setUser(null);
+    setEmail("");
+    Alert.alert("Logout", "Usuário desconectado.");
+  };
+
   return (
     <View style={styles.container}>
       {/* TÍTULO */}
       <Text style={styles.title}>HemoConexão</Text>
+
       <Text style={styles.subtitle}>
         Faça login para continuar
       </Text>
@@ -118,7 +157,7 @@ export default function Login() {
         style={styles.input}
       />
 
-      {/* BOTÃO LOGIN NORMAL */}
+      {/* LOGIN NORMAL */}
       <TouchableOpacity
         style={styles.button}
         onPress={handleLogin}
@@ -126,14 +165,14 @@ export default function Login() {
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>
 
-      {/* BOTÃO LOGIN COM GOOGLE */}
+      {/* LOGIN COM GOOGLE */}
       <TouchableOpacity
         style={[
           styles.googleButton,
           loading && styles.disabledButton,
         ]}
         onPress={handleGoogleLogin}
-        disabled={loading}
+        disabled={!request || loading}
       >
         <Text style={styles.googleButtonText}>
           {loading
@@ -142,15 +181,23 @@ export default function Login() {
         </Text>
       </TouchableOpacity>
 
-      {/* TEXTO EXTRA */}
+      {/* LOGOUT (opcional para testes) */}
+      {user && (
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleSignOut}
+        >
+          <Text style={styles.buttonText}>Logout</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* RODAPÉ */}
       <Text style={styles.footerText}>
         Doe sangue, salve vidas ❤️
       </Text>
     </View>
   );
 }
-
-/* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
   container: {
@@ -206,6 +253,14 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+
+  logoutButton: {
+    backgroundColor: "#777",
+    padding: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 12,
   },
 
   disabledButton: {
