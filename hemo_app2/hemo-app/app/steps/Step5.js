@@ -16,6 +16,9 @@ export default function Step5() {
       notifications: onboardingData.notifications,
       sexo: onboardingData.sexo,
       tipo_sanguineo: tipo,
+      doacoes: 0,
+      ultima_doacao: null,
+      cidade: "Poços de Caldas",
     };
 
     try {
@@ -32,12 +35,17 @@ export default function Step5() {
       console.log("RESPOSTA BACKEND:", data);
 
       if (data.success) {
-        // ✔ marca onboarding como concluído
+        // ✔ salva estado de onboarding
         await AsyncStorage.setItem("onboarding_done", "true");
+
+        // ✔ SALVA PERFIL COMPLETO LOCALMENTE (ESSENCIAL)
+        await AsyncStorage.setItem(
+          "user_profile",
+          JSON.stringify(payload)
+        );
 
         Alert.alert("Sucesso", "Cadastro concluído!");
 
-        // ✔ vai pra home
         router.replace("/(tabs)/Home");
       } else {
         Alert.alert("Erro", "Não foi possível salvar os dados");

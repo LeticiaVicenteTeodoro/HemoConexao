@@ -38,10 +38,10 @@ export default function Index() {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId:
-      "375042939186-al9bdulqdqidmasap427j5m5mc6qf7hb.apps.googleusercontent.com",
+      "608440626129-g99fv30v4t72j54r3nebh9kok1iul69m.apps.googleusercontent.com",
 
   androidClientId:
-    "375042939186-jtqvn9ir8btnr1ijkfdmumgrs22cp38j.apps.googleusercontent.com",
+    "608440626129-a0qnlup05jscfurtp9mup9sb349lg70c.apps.googleusercontent.com",
     
     redirectUri,
   });

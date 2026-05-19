@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,31 +10,83 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function EditProfile() {
-  const [name, setName] = useState("Letícia");
-  const [bloodType, setBloodType] = useState("O+");
-  const [gender, setGender] = useState("Feminino");
+  const [loading, setLoading] = useState(true);
 
-  function handleSave() {
-    Alert.alert("Sucesso", "Perfil atualizado com sucesso!");
-    router.back();
+  const [user, setUser] = useState(null);
+
+  const [name, setName] = useState("");
+  const [bloodType, setBloodType] = useState("");
+  const [gender, setGender] = useState("");
+
+  // 📥 CARREGA DADOS SALVOS
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  async function loadUser() {
+    try {
+      const data = await AsyncStorage.getItem("user_profile");
+
+      if (data) {
+        const parsed = JSON.parse(data);
+
+        setUser(parsed);
+        setName(parsed.email?.split("@")[0] || "");
+        setBloodType(parsed.tipo_sanguineo || "");
+        setGender(parsed.sexo || "");
+      }
+    } catch (err) {
+      console.log("Erro ao carregar:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 💾 SALVA ALTERAÇÕES
+  async function handleSave() {
+    try {
+      const updatedUser = {
+        ...user,
+        email: user?.email,
+        tipo_sanguineo: bloodType,
+        sexo: gender,
+        nome: name,
+      };
+
+      await AsyncStorage.setItem(
+        "user_profile",
+        JSON.stringify(updatedUser)
+      );
+
+      Alert.alert("Sucesso", "Perfil atualizado com sucesso!");
+      router.back();
+    } catch (err) {
+      console.log("Erro ao salvar:", err);
+      Alert.alert("Erro", "Não foi possível salvar");
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Carregando...</Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      
-      {/* SETA VOLTAR */}
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={styles.backButton}
-      >
+      {/* VOLTAR */}
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#E30613" />
       </TouchableOpacity>
 
       <Text style={styles.title}>Editar Perfil</Text>
 
-      {/* Nome */}
+      {/* NOME */}
       <Text style={styles.label}>Nome</Text>
       <TextInput
         style={styles.input}
@@ -43,7 +95,7 @@ export default function EditProfile() {
         placeholder="Digite seu nome"
       />
 
-      {/* Tipo Sanguíneo */}
+      {/* TIPO SANGUÍNEO */}
       <Text style={styles.label}>Tipo Sanguíneo</Text>
       <TextInput
         style={styles.input}
@@ -52,7 +104,7 @@ export default function EditProfile() {
         placeholder="Ex: O+"
       />
 
-      {/* Sexo */}
+      {/* SEXO */}
       <Text style={styles.label}>Sexo</Text>
 
       <View style={styles.genderContainer}>
@@ -91,7 +143,7 @@ export default function EditProfile() {
         </TouchableOpacity>
       </View>
 
-      {/* BOTÃO SALVAR */}
+      {/* SALVAR */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Salvar Alterações</Text>
       </TouchableOpacity>
@@ -99,6 +151,7 @@ export default function EditProfile() {
   );
 }
 
+/* ESTILOS */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

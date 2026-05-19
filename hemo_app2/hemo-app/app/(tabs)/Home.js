@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,50 +8,15 @@ import {
   Modal,
 } from "react-native";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 export default function Home() {
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        // 1. check local
-        const seen = await AsyncStorage.getItem("onboarding_done");
-
-        if (seen) {
-          setShowOnboarding(false);
-          return;
-        }
-
-        // 2. fallback backend (SQLite)
-        const res = await fetch(
-          "http://192.168.1.20:3000/user/user@email.com"
-        );
-
-        const user = await res.json();
-
-        if (user) {
-          // já existe no banco → marca localmente
-          await AsyncStorage.setItem("onboarding_done", "true");
-          setShowOnboarding(false);
-        } else {
-          // não existe → mostra onboarding
-          setShowOnboarding(true);
-        }
-      } catch (err) {
-        console.log("Erro onboarding check:", err);
-        setShowOnboarding(true); // fallback seguro
-      }
-    };
-
-    checkOnboarding();
-  }, []);
+  // 🔥 sempre começa true → sempre mostra onboarding
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   // 🚀 iniciar onboarding
-  const startOnboarding = async () => {
+  const startOnboarding = () => {
     setShowOnboarding(false);
     router.push("/steps/Step1");
   };
@@ -96,7 +61,7 @@ export default function Home() {
         />
       </View>
 
-      {/* ONBOARDING MODAL */}
+      {/* ONBOARDING SEMPRE */}
       <Modal visible={showOnboarding} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modal}>
@@ -119,11 +84,9 @@ export default function Home() {
 }
 
 /* ITEM */
-function Item({ icon, text, link, route, onPress }) {
+function Item({ icon, text, link, onPress }) {
   const handlePress = async () => {
     if (onPress) return onPress();
-
-    if (route) return router.push(route);
 
     if (link) {
       const supported = await Linking.canOpenURL(link);
@@ -139,7 +102,7 @@ function Item({ icon, text, link, route, onPress }) {
   );
 }
 
-/* STYLES (igual ao seu) */
+/* STYLES */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
 

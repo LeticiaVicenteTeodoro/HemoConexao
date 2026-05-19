@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,44 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native"; // 🔥 ADICIONADO
 
 export default function Profile() {
-  const navigation = useNavigation();
+  const [user, setUser] = useState(null);
 
-  function handleLogout() {
-    // aqui você depois pode limpar token/AsyncStorage
-    router.replace("/");
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  // 🔥 NOVO: atualiza sempre que voltar pra tela
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
+
+  async function loadUser() {
+    try {
+      const data = await AsyncStorage.getItem("user_profile");
+
+      if (data) {
+        setUser(JSON.parse(data));
+      }
+    } catch (err) {
+      console.log("Erro ao carregar usuário:", err);
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await AsyncStorage.removeItem("user_profile");
+      await AsyncStorage.removeItem("onboarding_done");
+      router.replace("/");
+    } catch (err) {
+      console.log("Erro ao sair:", err);
+    }
   }
 
   return (
@@ -27,31 +56,51 @@ export default function Profile() {
           style={styles.avatar}
         />
 
-        <Text style={styles.name}>Letícia</Text>
-        <Text style={styles.info}>Tipo sanguíneo: O+</Text>
+        <Text style={styles.name}>
+          {user?.email?.split("@")[0] || "Usuário"}
+        </Text>
+
+        <Text style={styles.info}>
+          Tipo sanguíneo: {user?.tipo_sanguineo || "--"}
+        </Text>
+
+        <Text style={styles.info}>
+          Sexo: {user?.sexo || "--"}
+        </Text>
       </View>
 
       {/* CARD INFO */}
       <View style={styles.card}>
-        <Item icon="heart" label="Doações realizadas" value="3" />
-        <Item icon="calendar" label="Última doação" value="12/03/2026" />
-        <Item icon="map-marker" label="Cidade" value="Poços de Caldas" />
+        <Item
+          icon="heart"
+          label="Doações realizadas"
+          value={user?.doacoes || "0"}
+        />
+
+        <Item
+          icon="calendar"
+          label="Última doação"
+          value={user?.ultima_doacao || "Nunca"}
+        />
+
+        <Item
+          icon="map-marker"
+          label="Cidade"
+          value={user?.cidade || "Poços de Caldas"}
+        />
       </View>
 
       {/* EDITAR PERFIL */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate("EditProfile")}
+        onPress={() => router.push("/EditProfile")}
       >
         <FontAwesome name="edit" size={18} color="white" />
         <Text style={styles.buttonText}> Editar perfil</Text>
       </TouchableOpacity>
 
       {/* LOGOUT */}
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-      >
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <FontAwesome name="sign-out" size={18} color="white" />
         <Text style={styles.logoutText}> Sair da conta</Text>
       </TouchableOpacity>
@@ -59,6 +108,7 @@ export default function Profile() {
   );
 }
 
+/* COMPONENTE ITEM */
 function Item({ icon, label, value }) {
   return (
     <View style={styles.item}>
@@ -71,6 +121,7 @@ function Item({ icon, label, value }) {
   );
 }
 
+/* ESTILOS */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
