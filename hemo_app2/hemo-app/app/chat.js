@@ -7,7 +7,8 @@ import {
   FlatList,
   StyleSheet,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 // 🧠 FAQ mais inteligente e completo
 const FAQ = [
@@ -17,38 +18,43 @@ const FAQ = [
   },
   {
     keywords: ["quanto tempo", "duração", "demora"],
-    answer: "A doação leva cerca de 10 a 15 minutos, mas todo o processo dura em média 1 hora.",
+    answer:
+      "A doação leva cerca de 10 a 15 minutos, mas todo o processo dura em média 1 hora.",
   },
   {
     keywords: ["importância", "por que doar", "ajuda", "salvar vidas"],
-    answer: "Cada doação pode salvar até 4 vidas ❤️ O sangue não pode ser produzido artificialmente.",
+    answer:
+      "Cada doação pode salvar até 4 vidas ❤️ O sangue não pode ser produzido artificialmente.",
   },
   {
     keywords: ["quem pode", "doar", "requisitos", "idade"],
-    answer: "Pessoas entre 16 e 69 anos, com mais de 50kg e boa saúde podem doar.",
+    answer:
+      "Pessoas entre 16 e 69 anos, com mais de 50 kg e boa saúde podem doar.",
   },
   {
     keywords: ["não pode", "doença", "gripado", "febre"],
-    answer: "Não pode doar quem estiver com febre, gripe, infecção ou usando certos medicamentos.",
+    answer:
+      "Não pode doar quem estiver com febre, gripe, infecção ou usando certos medicamentos.",
   },
   {
     keywords: ["peso", "mínimo"],
-    answer: "O peso mínimo para doar sangue é 50kg.",
+    answer: "O peso mínimo para doar sangue é 50 kg.",
   },
   {
     keywords: ["jejum", "comer", "alimentação"],
-    answer: "Não é necessário jejum. Apenas evite alimentos gordurosos antes da doação.",
+    answer:
+      "Não é necessário jejum. Apenas evite alimentos gordurosos antes da doação.",
   },
 ];
 
-// 🧠 normalização inteligente
+// 🧠 Normalização inteligente
 const normalize = (text) =>
   text
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-// 🧠 cérebro do chat (versão forte)
+// 🧠 Cérebro do chat
 const getResponse = (text) => {
   const input = normalize(text);
 
@@ -74,7 +80,7 @@ const getResponse = (text) => {
 
   if (bestScore >= 2) return bestMatch;
 
-  // 🧠 fallback estilo IA
+  // fallback estilo IA
   if (input.includes("posso") || input.includes("pode")) {
     return "Depende da situação 👍 Me diga mais detalhes sobre você para te orientar melhor.";
   }
@@ -114,6 +120,18 @@ export default function Chat() {
 
   return (
     <View style={styles.container}>
+      {/* BOTÃO VOLTAR */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color="#E30613" />
+      </TouchableOpacity>
+
+      {/* TÍTULO */}
+      <Text style={styles.title}>Assistente Virtual ❤️</Text>
+
+      {/* MENSAGENS */}
       <FlatList
         data={messages}
         keyExtractor={(_, i) => i.toString()}
@@ -124,12 +142,19 @@ export default function Chat() {
               item.from === "user" ? styles.user : styles.bot,
             ]}
           >
-            <Text style={styles.text}>{item.text}</Text>
+            <Text
+              style={[
+                styles.text,
+                item.from === "user" && styles.userText,
+              ]}
+            >
+              {item.text}
+            </Text>
           </View>
         )}
       />
 
-      {/* 💡 sugestões inteligentes */}
+      {/* SUGESTÕES */}
       <View style={styles.suggestions}>
         {suggestions.map((s, i) => (
           <TouchableOpacity
@@ -142,15 +167,22 @@ export default function Chat() {
         ))}
       </View>
 
+      {/* INPUT */}
       <View style={styles.inputArea}>
         <TextInput
           value={input}
           onChangeText={setInput}
           placeholder="Pergunte algo..."
           style={styles.input}
+          onSubmitEditing={sendMessage}
         />
+
         <TouchableOpacity onPress={sendMessage}>
-          <FontAwesome name="arrow-right" size={20} color="#E30613" />
+          <FontAwesome
+            name="arrow-right"
+            size={20}
+            color="#E30613"
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -164,6 +196,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
 
+  /* BOTÃO VOLTAR */
+  backButton: {
+    alignSelf: "flex-start",
+    padding: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
+  /* TÍTULO */
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#E30613",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+
+  /* MENSAGENS */
   msg: {
     padding: 12,
     borderRadius: 12,
@@ -185,6 +235,11 @@ const styles = StyleSheet.create({
     color: "#000",
   },
 
+  userText: {
+    color: "#fff",
+  },
+
+  /* INPUT */
   inputArea: {
     flexDirection: "row",
     alignItems: "center",
@@ -199,6 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 
+  /* SUGESTÕES */
   suggestions: {
     flexDirection: "row",
     flexWrap: "wrap",

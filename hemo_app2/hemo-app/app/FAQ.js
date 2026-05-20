@@ -1,6 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 export default function FAQ() {
   const [openBlood, setOpenBlood] = useState(false);
@@ -8,7 +15,15 @@ export default function FAQ() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* BOTÃO VOLTAR */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color="#E30613" />
+      </TouchableOpacity>
 
+      {/* TÍTULO */}
       <Text style={styles.title}>Perguntas Frequentes</Text>
 
       {/* 🩸 DOAÇÃO DE SANGUE */}
@@ -17,15 +32,18 @@ export default function FAQ() {
         onPress={() => setOpenBlood(!openBlood)}
       >
         <Text style={styles.dropdownTitle}>🩸 Doação de Sangue</Text>
-        <FontAwesome name={openBlood ? "chevron-up" : "chevron-down"} size={16} />
+        <FontAwesome
+          name={openBlood ? "chevron-up" : "chevron-down"}
+          size={16}
+          color="#E30613"
+        />
       </TouchableOpacity>
 
       {openBlood && (
         <View style={styles.content}>
-
           <Item
             q="Quem pode doar sangue?"
-            a="Pessoas entre 16 e 69 anos, com mais de 50kg e em boa saúde."
+            a="Pessoas entre 16 e 69 anos, com mais de 50 kg e em boa saúde."
           />
 
           <Item
@@ -35,7 +53,7 @@ export default function FAQ() {
 
           <Item
             q="Quanto tempo dura a doação?"
-            a="A coleta dura cerca de 10 a 15 minutos, mas todo o processo leva cerca de 1 hora."
+            a="A coleta dura cerca de 10 a 15 minutos, mas todo o processo leva aproximadamente 1 hora."
           />
 
           <Item
@@ -56,49 +74,55 @@ export default function FAQ() {
         onPress={() => setOpenMarrow(!openMarrow)}
       >
         <Text style={styles.dropdownTitle}>🧬 Medula Óssea</Text>
-        <FontAwesome name={openMarrow ? "chevron-up" : "chevron-down"} size={16} />
+        <FontAwesome
+          name={openMarrow ? "chevron-up" : "chevron-down"}
+          size={16}
+          color="#E30613"
+        />
       </TouchableOpacity>
 
       {openMarrow && (
         <View style={styles.content}>
-
           <Item
             q="Quem pode se cadastrar?"
-            a="Pessoas entre 18 e 35 anos, saudáveis, que podem se cadastrar como doadores."
+            a="Pessoas entre 18 e 35 anos, saudáveis, podem se cadastrar como doadores."
           />
 
           <Item
             q="Como funciona o cadastro?"
-            a="É feito no REDOME com coleta de uma pequena amostra de sangue."
+            a="O cadastro é feito no REDOME com a coleta de uma pequena amostra de sangue."
           />
 
           <Item
             q="A doação de medula dói?"
-            a="O procedimento é seguro e pode causar desconforto leve, mas não dor intensa."
+            a="O procedimento é seguro e pode causar apenas desconforto leve."
           />
 
           <Item
             q="Qual a chance de ser chamado?"
-            a="É baixa, pois depende da compatibilidade genética entre doador e paciente."
+            a="A chance é baixa, pois depende da compatibilidade genética entre doador e paciente."
           />
 
           <Item
             q="Onde posso me cadastrar?"
-            a="Em hemocentros autorizados, como o HemoMinas."
+            a="Em hemocentros autorizados, como unidades da Fundação Hemominas."
           />
         </View>
       )}
-
     </ScrollView>
   );
 }
 
-// 📦 componente de pergunta/resposta
+// COMPONENTE DE PERGUNTA/RESPOSTA
 function Item({ q, a }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <TouchableOpacity style={styles.item} onPress={() => setOpen(!open)}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={() => setOpen(!open)}
+      activeOpacity={0.8}
+    >
       <Text style={styles.question}>❓ {q}</Text>
       {open && <Text style={styles.answer}>💡 {a}</Text>}
     </TouchableOpacity>
@@ -112,11 +136,20 @@ const styles = StyleSheet.create({
     padding: 15,
   },
 
+  // BOTÃO VOLTAR
+  backButton: {
+    alignSelf: "flex-start",
+    padding: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#E30613",
     marginBottom: 20,
+    textAlign: "center",
   },
 
   dropdown: {
@@ -127,11 +160,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
     alignItems: "center",
+    elevation: 2,
   },
 
   dropdownTitle: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#333",
   },
 
   content: {
@@ -143,14 +178,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 8,
+    elevation: 1,
   },
 
   question: {
     fontWeight: "bold",
+    color: "#222",
   },
 
   answer: {
     marginTop: 8,
     color: "#555",
+    lineHeight: 20,
   },
 });

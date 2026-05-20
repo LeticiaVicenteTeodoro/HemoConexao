@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { router } from "expo-router";
 import onboardingData from "./onboardingData";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,8 +16,14 @@ export default function Step5() {
   const finish = async (tipo) => {
     onboardingData.tipo_sanguineo = tipo;
 
+    // Recupera e-mail salvo no login (se existir)
+    const savedEmail =
+      (await AsyncStorage.getItem("user_email")) ||
+      "user@email.com";
+
+    // Perfil completo do usuário
     const payload = {
-      email: "user@email.com", // depois vem do Google Auth
+      email: savedEmail,
       acceptedOnboarding: onboardingData.acceptedOnboarding,
       notifications: onboardingData.notifications,
       sexo: onboardingData.sexo,
@@ -22,43 +34,65 @@ export default function Step5() {
     };
 
     try {
-      const res = await fetch("http://192.168.1.20:3000/onboarding", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      // =========================
+      // 1. SALVA LOCALMENTE (SEMPRE)
+      // =========================
+      await AsyncStorage.setItem(
+        "user_profile",
+        JSON.stringify(payload)
+      );
 
-      const data = await res.json();
+      // =========================
+      // 2. MARCA ONBOARDING CONCLUÍDO
+      // =========================
+      await AsyncStorage.setItem("onboarding_done", "true");
 
-      console.log("RESPOSTA BACKEND:", data);
-
-      if (data.success) {
-        // ✔ salva estado de onboarding
-        await AsyncStorage.setItem("onboarding_done", "true");
-
-        // ✔ SALVA PERFIL COMPLETO LOCALMENTE (ESSENCIAL)
-        await AsyncStorage.setItem(
-          "user_profile",
-          JSON.stringify(payload)
+      // =========================
+      // 3. TENTA ENVIAR AO BACKEND
+      // =========================
+      try {
+        const res = await fetch(
+          "http://192.168.1.20:3000/onboarding",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
         );
 
-        Alert.alert("Sucesso", "Cadastro concluído!");
-
-        router.replace("/(tabs)/Home");
-      } else {
-        Alert.alert("Erro", "Não foi possível salvar os dados");
+        if (res.ok) {
+          const data = await res.json();
+          console.log("RESPOSTA BACKEND:", data);
+        }
+      } catch (serverError) {
+        console.log(
+          "Backend indisponível, mas dados salvos localmente:",
+          serverError
+        );
       }
+
+      // =========================
+      // 4. AVISA SUCESSO
+      // =========================
+      Alert.alert("Sucesso", "Cadastro concluído!");
+
+      // =========================
+      // 5. REDIRECIONA PARA HOME
+      // =========================
+      router.replace("/(tabs)/Home");
     } catch (err) {
       console.log("Erro ao salvar:", err);
-      Alert.alert("Erro", "Falha na conexão com servidor");
+      Alert.alert("Erro", "Não foi possível salvar os dados.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Qual seu tipo sanguíneo?</Text>
+      <Text style={styles.title}>
+        Qual seu tipo sanguíneo?
+      </Text>
 
       <View style={styles.grid}>
         {types.map((t) => (
@@ -76,13 +110,26 @@ export default function Step5() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
-  title: { textAlign: "center", color: "#E30613", marginBottom: 20 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  title: {
+    textAlign: "center",
+    color: "#E30613",
+    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
+
   btn: {
     width: "48%",
     backgroundColor: "#E30613",
@@ -91,5 +138,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: "center",
   },
-  txt: { color: "#fff", fontWeight: "bold" },
+
+  txt: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
 });

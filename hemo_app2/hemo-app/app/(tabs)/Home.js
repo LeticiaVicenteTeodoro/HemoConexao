@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,40 @@ import {
   Modal,
 } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 export default function Home() {
-  // 🔥 sempre começa true → sempre mostra onboarding
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  // começa oculto até verificar o AsyncStorage
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // 🚀 iniciar onboarding
+  // verifica se o popup já foi exibido alguma vez
+  useEffect(() => {
+    checkFirstAccess();
+  }, []);
+
+  const checkFirstAccess = async () => {
+    try {
+      // chave que indica se o popup inicial já foi mostrado
+      const alreadyShown = await AsyncStorage.getItem(
+        "welcome_popup_shown"
+      );
+
+      // se nunca foi mostrado, exibe e salva a marcação
+      if (!alreadyShown) {
+        setShowOnboarding(true);
+        await AsyncStorage.setItem(
+          "welcome_popup_shown",
+          "true"
+        );
+      }
+    } catch (error) {
+      console.log("Erro ao verificar popup inicial:", error);
+    }
+  };
+
+  // inicia o onboarding em 5 passos
   const startOnboarding = () => {
     setShowOnboarding(false);
     router.push("/steps/Step1");
@@ -61,7 +87,7 @@ export default function Home() {
         />
       </View>
 
-      {/* ONBOARDING SEMPRE */}
+      {/* Popup exibido somente na primeira vez */}
       <Modal visible={showOnboarding} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modal}>
@@ -73,7 +99,10 @@ export default function Home() {
               Vamos te guiar em 5 passos rápidos.
             </Text>
 
-            <TouchableOpacity style={styles.button} onPress={startOnboarding}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={startOnboarding}
+            >
               <Text style={styles.buttonText}>Start</Text>
             </TouchableOpacity>
           </View>
@@ -104,7 +133,10 @@ function Item({ icon, text, link, onPress }) {
 
 /* STYLES */
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: {
+    flex: 1,
+    padding: 20,
+  },
 
   title: {
     fontSize: 20,

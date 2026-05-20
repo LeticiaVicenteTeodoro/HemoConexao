@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 const statusColor = {
   Critico: "#D32F2F",
@@ -38,18 +46,27 @@ export default function Stock() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* BOTÃO VOLTAR */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color="#E30613" />
+      </TouchableOpacity>
+
+      {/* TÍTULO */}
       <Text style={styles.title}>Estoque de Sangue</Text>
 
+      {/* BANNER */}
       <View style={styles.banner}>
         <Text style={styles.bannerText}>
           Consulte o melhor momento para doar ❤️
         </Text>
       </View>
 
+      {/* CONTEÚDO */}
       {loading ? (
-        <Text style={{ textAlign: "center", marginTop: 20 }}>
-          Carregando...
-        </Text>
+        <Text style={styles.loadingText}>Carregando...</Text>
       ) : (
         <View style={styles.grid}>
           {stockData.map((item, index) => (
@@ -59,10 +76,15 @@ export default function Stock() {
               <View
                 style={[
                   styles.statusBadge,
-                  { backgroundColor: statusColor[item.status] || "#999" },
+                  {
+                    backgroundColor:
+                      statusColor[item.status] || "#999",
+                  },
                 ]}
               >
-                <Text style={styles.statusText}>{item.status}</Text>
+                <Text style={styles.statusText}>
+                  {item.status}
+                </Text>
               </View>
             </View>
           ))}
@@ -78,28 +100,54 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     padding: 15,
   },
+
+  /* BOTÃO VOLTAR */
+  backButton: {
+    alignSelf: "flex-start",
+    padding: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
+  /* TÍTULO */
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#B71C1C",
     marginBottom: 10,
+    textAlign: "center",
   },
+
+  /* BANNER */
   banner: {
     backgroundColor: "#B71C1C",
     padding: 12,
     borderRadius: 10,
     marginBottom: 15,
   },
+
   bannerText: {
     color: "#fff",
     textAlign: "center",
     fontWeight: "600",
   },
+
+  /* LOADING */
+  loadingText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#666",
+  },
+
+  /* GRID */
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
+
+  /* CARD */
   card: {
     width: "47%",
     backgroundColor: "#fff",
@@ -109,16 +157,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 2,
   },
+
+  /* TIPO SANGUÍNEO */
   type: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 10,
+    color: "#222",
   },
+
+  /* STATUS */
   statusBadge: {
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 8,
   },
+
   statusText: {
     color: "#fff",
     fontWeight: "bold",
