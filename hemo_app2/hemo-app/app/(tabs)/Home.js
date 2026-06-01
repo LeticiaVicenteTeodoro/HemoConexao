@@ -52,7 +52,11 @@ export default function Home() {
       <Text style={styles.title}>HemoConexão</Text>
 
       <View style={styles.grid}>
-        <Item icon="plus" text="Registrar" />
+        <Item
+  icon="plus"
+  text="Registrar"
+  onPress={() => router.push("/Registrar")}
+/>
 
         <Item
           icon="calendar"
@@ -60,7 +64,11 @@ export default function Home() {
           link="https://www.mg.gov.br/agendamento_servico/doacao-de-sangue"
         />
 
-        <Item icon="heart" text="Histórico" />
+       <Item
+  icon="heart"
+  text="Histórico"
+  onPress={() => router.push("/Historico")}
+/>
 
         <Item
           icon="question"

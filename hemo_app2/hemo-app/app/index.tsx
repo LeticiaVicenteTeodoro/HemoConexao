@@ -32,9 +32,6 @@ export default function Index() {
    * Para web, normalmente será http://localhost:8081
    * Para mobile, usará o scheme definido no app.json.
    */
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "googlelogintest",
-  });
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId:
@@ -43,7 +40,6 @@ export default function Index() {
   androidClientId:
     "608440626129-a0qnlup05jscfurtp9mup9sb349lg70c.apps.googleusercontent.com",
     
-    redirectUri,
   });
 
   /**
