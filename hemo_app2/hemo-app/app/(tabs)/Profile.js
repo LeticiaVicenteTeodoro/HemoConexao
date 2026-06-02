@@ -9,19 +9,22 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native"; // 🔥 ADICIONADO
+import { useFocusEffect } from "@react-navigation/native";
+
+import db from "../registros";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     loadUser();
+    loadDoacoes();
   }, []);
 
-  // 🔥 NOVO: atualiza sempre que voltar pra tela
   useFocusEffect(
     useCallback(() => {
       loadUser();
+      loadDoacoes();
     }, [])
   );
 
@@ -37,6 +40,21 @@ export default function Profile() {
     }
   }
 
+  async function loadDoacoes() {
+    try {
+      const resultado = db.getFirstSync(`
+        SELECT COUNT(*) as total FROM doacoes
+      `);
+
+      setUser((prev) => ({
+        ...prev,
+        doacoes: resultado.total,
+      }));
+    } catch (err) {
+      console.log("Erro ao contar doações:", err);
+    }
+  }
+
   async function handleLogout() {
     try {
       await AsyncStorage.removeItem("user_profile");
@@ -49,7 +67,7 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      {/* FOTO + INFO */}
+      {/* HEADER */}
       <View style={styles.header}>
         <Image
           source={{ uri: "https://i.pravatar.cc/300" }}
@@ -75,12 +93,6 @@ export default function Profile() {
           icon="heart"
           label="Doações realizadas"
           value={user?.doacoes || "0"}
-        />
-
-        <Item
-          icon="calendar"
-          label="Última doação"
-          value={user?.ultima_doacao || "Nunca"}
         />
 
         <Item

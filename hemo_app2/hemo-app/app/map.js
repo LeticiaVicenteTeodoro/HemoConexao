@@ -1,4 +1,4 @@
-/*import { 
+import { 
   View, 
   StyleSheet, 
   FlatList, 
@@ -146,5 +146,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
-*/
