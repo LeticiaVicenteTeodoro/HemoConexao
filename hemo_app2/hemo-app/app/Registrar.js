@@ -8,11 +8,14 @@ import {
   StyleSheet,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { useNavigation } from "@react-navigation/native";
 
 import estadosCidades from "./cidadeseestados.json";
 import db, { createTables } from "./registros";
 
 export default function Registrar() {
+  const navigation = useNavigation();
+
   const [data, setData] = useState("");
   const [estado, setEstado] = useState("");
   const [cidade, setCidade] = useState("");
@@ -24,17 +27,11 @@ export default function Registrar() {
   }, []);
 
   const estados = Object.keys(estadosCidades);
-
-  const cidades = estado
-    ? estadosCidades[estado]
-    : [];
+  const cidades = estado ? estadosCidades[estado] : [];
 
   const salvar = () => {
     if (!data || !estado || !cidade || !tipo) {
-      Alert.alert(
-        "Erro",
-        "Preencha data, estado, cidade e tipo sanguíneo."
-      );
+      Alert.alert("Erro", "Preencha data, estado, cidade e tipo sanguíneo.");
       return;
     }
 
@@ -45,18 +42,10 @@ export default function Registrar() {
         (data, local, tipo, observacao)
         VALUES (?, ?, ?, ?)
       `,
-        [
-          data,
-          `${cidade}, ${estado}`,
-          tipo,
-          obs,
-        ]
+        [data, `${cidade}, ${estado}`, tipo, obs]
       );
 
-      Alert.alert(
-        "Sucesso",
-        "Doação registrada!"
-      );
+      Alert.alert("Sucesso", "Doação registrada!");
 
       setData("");
       setEstado("");
@@ -71,9 +60,15 @@ export default function Registrar() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Registrar Doação
-      </Text>
+      {/* SETA DE VOLTAR */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>←</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>Registrar Doação</Text>
 
       <TextInput
         placeholder="Data (01/06/2026)"
@@ -90,17 +85,9 @@ export default function Registrar() {
             setCidade("");
           }}
         >
-          <Picker.Item
-            label="Selecione o Estado"
-            value=""
-          />
-
+          <Picker.Item label="Selecione o Estado" value="" />
           {estados.map((estado) => (
-            <Picker.Item
-              key={estado}
-              label={estado}
-              value={estado}
-            />
+            <Picker.Item key={estado} label={estado} value={estado} />
           ))}
         </Picker>
       </View>
@@ -109,37 +96,18 @@ export default function Registrar() {
         <Picker
           selectedValue={cidade}
           enabled={estado !== ""}
-          onValueChange={(value) =>
-            setCidade(value)
-          }
+          onValueChange={(value) => setCidade(value)}
         >
-          <Picker.Item
-            label="Selecione a Cidade"
-            value=""
-          />
-
+          <Picker.Item label="Selecione a Cidade" value="" />
           {cidades.map((cidade) => (
-            <Picker.Item
-              key={cidade}
-              label={cidade}
-              value={cidade}
-            />
+            <Picker.Item key={cidade} label={cidade} value={cidade} />
           ))}
         </Picker>
       </View>
 
       <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={tipo}
-          onValueChange={(value) =>
-            setTipo(value)
-          }
-        >
-          <Picker.Item
-            label="Selecione o Tipo Sanguíneo"
-            value=""
-          />
-
+        <Picker selectedValue={tipo} onValueChange={(value) => setTipo(value)}>
+          <Picker.Item label="Selecione o Tipo Sanguíneo" value="" />
           <Picker.Item label="A+" value="A+" />
           <Picker.Item label="A-" value="A-" />
           <Picker.Item label="B+" value="B+" />
@@ -159,13 +127,8 @@ export default function Registrar() {
         multiline
       />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={salvar}
-      >
-        <Text style={styles.buttonText}>
-          Salvar
-        </Text>
+      <TouchableOpacity style={styles.button} onPress={salvar}>
+        <Text style={styles.buttonText}>Salvar</Text>
       </TouchableOpacity>
     </View>
   );
@@ -175,6 +138,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 10,
+  },
+
+  backText: {
+    color: "#E30613",
+    fontSize: 28,
+    fontWeight: "bold",
   },
 
   title: {

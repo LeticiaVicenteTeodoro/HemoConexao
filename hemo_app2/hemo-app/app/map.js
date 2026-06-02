@@ -10,8 +10,10 @@ import {
 
 import MapView, { Marker } from "react-native-maps";
 import { useRef } from "react";
+import { useNavigation } from "@react-navigation/native";
 
 export default function MapScreen() {
+  const navigation = useNavigation();
   const mapRef = useRef(null);
 
   const centers = [
@@ -29,7 +31,6 @@ export default function MapScreen() {
     },
   ];
 
-  // 📍 Centraliza o mapa
   const goToLocation = (item) => {
     mapRef.current.animateToRegion({
       latitude: item.latitude,
@@ -39,7 +40,6 @@ export default function MapScreen() {
     });
   };
 
-  // 🚗 Abrir rota no Google Maps
   const openRoute = (lat, lng) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
@@ -48,7 +48,6 @@ export default function MapScreen() {
     });
   };
 
-  // ⚠️ Evita erro no navegador
   if (Platform.OS === "web") {
     return (
       <View style={styles.container}>
@@ -59,6 +58,15 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+
+      {/* SETA DE VOLTAR */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>←</Text>
+      </TouchableOpacity>
+
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -81,26 +89,22 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-    
       <FlatList
         data={centers}
         keyExtractor={(item) => item.id.toString()}
         style={styles.list}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            
             <TouchableOpacity onPress={() => goToLocation(item)}>
               <Text style={styles.title}>{item.title}</Text>
             </TouchableOpacity>
 
-           
             <TouchableOpacity
               style={styles.button}
               onPress={() => openRoute(item.latitude, item.longitude)}
             >
               <Text style={styles.buttonText}>Ver rota</Text>
             </TouchableOpacity>
-
           </View>
         )}
       />
@@ -111,6 +115,19 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1 
+  },
+
+  backButton: {
+    position: "absolute",
+    top: 40,
+    left: 15,
+    zIndex: 10,
+  },
+
+  backText: {
+    color: "#E30613",
+    fontSize: 30,
+    fontWeight: "bold",
   },
 
   map: {

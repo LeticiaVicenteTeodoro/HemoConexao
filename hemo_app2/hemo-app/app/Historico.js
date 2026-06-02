@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 import db, { createTables } from "./registros";
 
 export default function Historico() {
+  const navigation = useNavigation();
+
   const [dados, setDados] = useState([]);
 
   useEffect(() => {
@@ -37,18 +40,11 @@ export default function Historico() {
       "Excluir",
       "Deseja remover este registro?",
       [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
+        { text: "Cancelar", style: "cancel" },
         {
           text: "Excluir",
           onPress: () => {
-            db.runSync(
-              "DELETE FROM doacoes WHERE id = ?",
-              [id]
-            );
-
+            db.runSync("DELETE FROM doacoes WHERE id = ?", [id]);
             carregar();
           },
         },
@@ -58,9 +54,15 @@ export default function Historico() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Histórico de Doações
-      </Text>
+      {/* SETA DE VOLTAR */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>←</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>Histórico de Doações</Text>
 
       <FlatList
         data={dados}
@@ -90,6 +92,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 10,
+  },
+
+  backText: {
+    color: "#E30613",
+    fontSize: 28,
+    fontWeight: "bold",
   },
 
   title: {
