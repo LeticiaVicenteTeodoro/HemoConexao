@@ -10,6 +10,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 
 import db from "../registros";
 
@@ -55,6 +56,34 @@ export default function Profile() {
     }
   }
 
+  async function pickImage() {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      alert("Permissão negada para acessar a galeria");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+
+      const updatedUser = { ...user, photo: uri };
+
+      setUser(updatedUser);
+
+      await AsyncStorage.setItem(
+        "user_profile",
+        JSON.stringify(updatedUser)
+      );
+    }
+  }
+
   async function handleLogout() {
     try {
       await AsyncStorage.removeItem("user_profile");
@@ -67,12 +96,21 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
+      {/* AVATAR */}
       <View style={styles.header}>
-        <Image
-          source={{ uri: "https://i.pravatar.cc/300" }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+          {user?.photo ? (
+            <Image source={{ uri: user.photo }} style={styles.avatar} />
+          ) : (
+            <View style={styles.placeholder}>
+              <FontAwesome name="user" size={50} color="#aaa" />
+            </View>
+          )}
+
+          <View style={styles.cameraIcon}>
+            <FontAwesome name="camera" size={14} color="white" />
+          </View>
+        </TouchableOpacity>
 
         <Text style={styles.name}>
           {user?.email?.split("@")[0] || "Usuário"}
@@ -120,7 +158,7 @@ export default function Profile() {
   );
 }
 
-/* COMPONENTE ITEM */
+/* ITEM */
 function Item({ icon, label, value }) {
   return (
     <View style={styles.item}>
@@ -133,7 +171,7 @@ function Item({ icon, label, value }) {
   );
 }
 
-/* ESTILOS */
+/* STYLES */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -146,13 +184,40 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
 
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 10,
+  },
+
   avatar: {
     width: 110,
     height: 110,
     borderRadius: 55,
-    marginBottom: 10,
     borderWidth: 3,
     borderColor: "#E30613",
+  },
+
+  placeholder: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#E30613",
+  },
+
+  cameraIcon: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "#E30613",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   name: {
