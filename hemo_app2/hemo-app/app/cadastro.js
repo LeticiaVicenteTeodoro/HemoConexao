@@ -20,10 +20,7 @@ export default function Cadastro() {
 
   const cadastrar = async () => {
     if (!nome || !email || !senha) {
-      Alert.alert(
-        "Erro",
-        "Preencha nome, email e senha."
-      );
+      Alert.alert("Erro", "Preencha nome, email e senha.");
       return;
     }
 
@@ -35,9 +32,7 @@ export default function Cadastro() {
           nome
         )}&email=${encodeURIComponent(
           email
-        )}&senha=${encodeURIComponent(
-          senha
-        )}`,
+        )}&senha=${encodeURIComponent(senha)}`,
         {
           method: "POST",
         }
@@ -46,26 +41,25 @@ export default function Cadastro() {
       const data = await response.json();
 
       if (!data.sucesso) {
-        Alert.alert(
-          "Erro",
-          data.mensagem
-        );
+        Alert.alert("Erro", data.mensagem || data.erro || "Erro ao cadastrar.");
         return;
       }
 
       Alert.alert(
-        "Sucesso",
-        "Cadastro realizado!"
+        "Cadastro realizado",
+        "Enviamos um código de confirmação para seu email."
       );
 
-      router.replace("/");
+      router.push({
+        pathname: "/confirmar",
+        params: {
+          email: email,
+        },
+      });
     } catch (error) {
       console.log(error);
 
-      Alert.alert(
-        "Erro",
-        "Não foi possível conectar ao servidor."
-      );
+      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
     } finally {
       setLoading(false);
     }
@@ -73,9 +67,7 @@ export default function Cadastro() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Criar Conta
-      </Text>
+      <Text style={styles.title}>Criar Conta</Text>
 
       <TextInput
         placeholder="Nome"
@@ -88,6 +80,8 @@ export default function Cadastro() {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
         style={styles.input}
       />
 
@@ -112,20 +106,12 @@ export default function Cadastro() {
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading
-            ? "Cadastrando..."
-            : "Cadastrar"}
+          {loading ? "Cadastrando..." : "Cadastrar"}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={() =>
-          router.back()
-        }
-      >
-        <Text style={styles.link}>
-          Já possui conta? Entrar
-        </Text>
+      <TouchableOpacity onPress={() => router.back()}>
+        <Text style={styles.link}>Já possui conta? Entrar</Text>
       </TouchableOpacity>
     </View>
   );

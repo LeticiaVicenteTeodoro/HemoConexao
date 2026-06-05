@@ -1,16 +1,27 @@
 from fastapi import FastAPI
 import sqlite3
+import random
+import os
+import resend
 
 app = FastAPI()
 
 DB_PATH = "banco.db"
 
+resend.api_key = os.environ.get("RESEND_API_KEY")
+
+
+def conectar():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=10000;")
+    return conn
+
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar()
     cur = conn.cursor()
 
-    # Tabela de usuários
     cur.execute("""
     CREATE TABLE IF NOT EXISTS usuarios(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +31,6 @@ def init_db():
     )
     """)
 
-    # Tabela de doações
     cur.execute("""
     CREATE TABLE IF NOT EXISTS doacoes(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,13 +39,43 @@ def init_db():
         local TEXT,
         tipo TEXT,
         observacao TEXT,
-        FOREIGN KEY(usuario_id)
-        REFERENCES usuarios(id)
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
     )
     """)
 
+    try:
+        cur.execute("ALTER TABLE usuarios ADD COLUMN token TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cur.execute("ALTER TABLE usuarios ADD COLUMN validado INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
+
+
+def enviar_email_token(email, nome, token):
+    if not resend.api_key:
+        raise Exception("RESEND_API_KEY não configurada.")
+
+    params = {
+        "from": "HemoConexão <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Confirmação de cadastro - HemoConexão",
+        "html": f"""
+        <div style="font-family: Arial, sans-serif;">
+            <h2>Olá, {nome}!</h2>
+            <p>Seu código de confirmação do HemoConexão é:</p>
+            <h1 style="color:#E30613;">{token}</h1>
+            <p>Digite esse código no aplicativo para ativar sua conta.</p>
+        </div>
+        """
+    }
+
+    resend.Emails.send(params)
 
 
 init_db()
@@ -46,31 +86,34 @@ def home():
     return {"status": "ok"}
 
 
-# CADASTRO
 @app.post("/cadastro")
-def cadastro(
-    nome: str,
-    email: str,
-    senha: str
-):
+def cadastro(nome: str, email: str, senha: str):
+    token = str(random.randint(100000, 999999))
+    conn = None
+
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = conectar()
         cur = conn.cursor()
 
         cur.execute(
             """
             INSERT INTO usuarios
-            (nome,email,senha)
-            VALUES(?,?,?)
+            (nome, email, senha, token, validado)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (nome, email, senha)
+            (nome, email, senha, token, 0)
         )
 
         conn.commit()
+        conn.close()
+        conn = None
+
+        enviar_email_token(email, nome, token)
 
         return {
             "sucesso": True,
-            "mensagem": "Usuário criado"
+            "mensagem": "Usuário criado. Verifique seu email para confirmar.",
+            "email": email
         }
 
     except sqlite3.IntegrityError:
@@ -80,42 +123,104 @@ def cadastro(
         }
 
     except Exception as e:
+        print("ERRO CADASTRO:", e)
         return {
             "sucesso": False,
             "erro": str(e)
         }
 
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
-# LOGIN
+@app.post("/confirmar")
+def confirmar(email: str, token: str):
+    conn = None
+
+    try:
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE email = ?
+            AND token = ?
+            """,
+            (email, token)
+        )
+
+        usuario = cur.fetchone()
+
+        if not usuario:
+            return {
+                "sucesso": False,
+                "mensagem": "Token inválido"
+            }
+
+        cur.execute(
+            """
+            UPDATE usuarios
+            SET validado = 1,
+                token = NULL
+            WHERE email = ?
+            """,
+            (email,)
+        )
+
+        conn.commit()
+
+        return {
+            "sucesso": True,
+            "mensagem": "Email confirmado com sucesso"
+        }
+
+    except Exception as e:
+        print("ERRO CONFIRMAR:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/login")
-def login(
-    email: str,
-    senha: str
-):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+def login(email: str, senha: str):
+    conn = None
 
-    cur.execute(
-        """
-        SELECT
-            id,
-            nome,
-            email
-        FROM usuarios
-        WHERE email = ?
-        AND senha = ?
-        """,
-        (email, senha)
-    )
+    try:
+        conn = conectar()
+        cur = conn.cursor()
 
-    usuario = cur.fetchone()
+        cur.execute(
+            """
+            SELECT id, nome, email, validado
+            FROM usuarios
+            WHERE email = ?
+            AND senha = ?
+            """,
+            (email, senha)
+        )
 
-    conn.close()
+        usuario = cur.fetchone()
 
-    if usuario:
+        if not usuario:
+            return {
+                "sucesso": False,
+                "mensagem": "Login inválido"
+            }
+
+        if usuario[3] != 1:
+            return {
+                "sucesso": False,
+                "mensagem": "Email ainda não confirmado"
+            }
+
         return {
             "sucesso": True,
             "id": usuario[0],
@@ -123,13 +228,18 @@ def login(
             "email": usuario[2]
         }
 
-    return {
-        "sucesso": False,
-        "mensagem": "Login inválido"
-    }
+    except Exception as e:
+        print("ERRO LOGIN:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
 
 
-# REGISTRAR DOAÇÃO
 @app.post("/doacao")
 def registrar_doacao(
     usuario_id: int,
@@ -138,29 +248,19 @@ def registrar_doacao(
     tipo: str,
     observacao: str = ""
 ):
+    conn = None
+
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = conectar()
         cur = conn.cursor()
 
         cur.execute(
             """
             INSERT INTO doacoes
-            (
-                usuario_id,
-                data,
-                local,
-                tipo,
-                observacao
-            )
+            (usuario_id, data, local, tipo, observacao)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (
-                usuario_id,
-                data,
-                local,
-                tipo,
-                observacao
-            )
+            (usuario_id, data, local, tipo, observacao)
         )
 
         conn.commit()
@@ -171,50 +271,55 @@ def registrar_doacao(
         }
 
     except Exception as e:
+        print("ERRO DOACAO:", e)
         return {
             "sucesso": False,
             "erro": str(e)
         }
 
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
-# HISTÓRICO DE DOAÇÕES
 @app.get("/historico/{usuario_id}")
 def historico(usuario_id: int):
+    conn = None
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+    try:
+        conn = conectar()
+        cur = conn.cursor()
 
-    cur.execute(
-        """
-        SELECT
-            id,
-            data,
-            local,
-            tipo,
-            observacao
-        FROM doacoes
-        WHERE usuario_id = ?
-        ORDER BY id DESC
-        """,
-        (usuario_id,)
-    )
+        cur.execute(
+            """
+            SELECT id, data, local, tipo, observacao
+            FROM doacoes
+            WHERE usuario_id = ?
+            ORDER BY id DESC
+            """,
+            (usuario_id,)
+        )
 
-    dados = cur.fetchall()
+        dados = cur.fetchall()
 
-    conn.close()
+        resultado = []
 
-    resultado = []
+        for item in dados:
+            resultado.append({
+                "id": item[0],
+                "data": item[1],
+                "local": item[2],
+                "tipo": item[3],
+                "observacao": item[4]
+            })
 
-    for item in dados:
-        resultado.append({
-            "id": item[0],
-            "data": item[1],
-            "local": item[2],
-            "tipo": item[3],
-            "observacao": item[4]
-        })
+        return resultado
 
-    return resultado
+    except Exception as e:
+        print("ERRO HISTORICO:", e)
+        return []
+
+    finally:
+        if conn:
+            conn.close()
+
