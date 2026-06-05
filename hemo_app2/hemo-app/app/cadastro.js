@@ -8,18 +8,22 @@ import {
   Alert,
 } from "react-native";
 import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL = "http://192.168.1.20:8000";
 
-export default function Index() {
+export default function Cadastro() {
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [senha, setSenha] = useState("");
+  const [tipo, setTipo] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Erro", "Preencha email e senha.");
+  const cadastrar = async () => {
+    if (!nome || !email || !senha) {
+      Alert.alert(
+        "Erro",
+        "Preencha nome, email e senha."
+      );
       return;
     }
 
@@ -27,9 +31,13 @@ export default function Index() {
       setLoading(true);
 
       const response = await fetch(
-        `${API_URL}/login?email=${encodeURIComponent(
+        `${API_URL}/cadastro?nome=${encodeURIComponent(
+          nome
+        )}&email=${encodeURIComponent(
           email
-        )}&senha=${encodeURIComponent(password)}`,
+        )}&senha=${encodeURIComponent(
+          senha
+        )}`,
         {
           method: "POST",
         }
@@ -38,22 +46,19 @@ export default function Index() {
       const data = await response.json();
 
       if (!data.sucesso) {
-        Alert.alert("Erro", "Email ou senha inválidos.");
+        Alert.alert(
+          "Erro",
+          data.mensagem
+        );
         return;
       }
 
-      await AsyncStorage.setItem(
-        "usuario",
-        JSON.stringify({
-          id: data.id,
-          nome: data.nome,
-          email: data.email,
-        })
+      Alert.alert(
+        "Sucesso",
+        "Cadastro realizado!"
       );
 
-      Alert.alert("Sucesso", `Bem-vindo(a), ${data.nome}!`);
-
-      router.replace("/Home");
+      router.replace("/");
     } catch (error) {
       console.log(error);
 
@@ -68,48 +73,60 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>HemoConexão</Text>
-
-      <Text style={styles.subtitle}>
-        Faça login para continuar
+      <Text style={styles.title}>
+        Criar Conta
       </Text>
+
+      <TextInput
+        placeholder="Nome"
+        value={nome}
+        onChangeText={setNome}
+        style={styles.input}
+      />
 
       <TextInput
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         style={styles.input}
-        autoCapitalize="none"
-        keyboardType="email-address"
       />
 
       <TextInput
         placeholder="Senha"
-        value={password}
-        onChangeText={setPassword}
+        value={senha}
+        onChangeText={setSenha}
         secureTextEntry
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="Tipo sanguíneo (opcional)"
+        value={tipo}
+        onChangeText={setTipo}
         style={styles.input}
       />
 
       <TouchableOpacity
         style={styles.button}
-        onPress={handleLogin}
+        onPress={cadastrar}
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? "Entrando..." : "Entrar"}
+          {loading
+            ? "Cadastrando..."
+            : "Cadastrar"}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/cadastro")}>
+      <TouchableOpacity
+        onPress={() =>
+          router.back()
+        }
+      >
         <Text style={styles.link}>
-          Não possui conta? Cadastre-se
+          Já possui conta? Entrar
         </Text>
       </TouchableOpacity>
-
-      <Text style={styles.footerText}>
-        Doe sangue, salve vidas ❤️
-      </Text>
     </View>
   );
 }
@@ -127,12 +144,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#E30613",
     textAlign: "center",
-  },
-
-  subtitle: {
-    textAlign: "center",
-    marginBottom: 30,
-    color: "#555",
+    marginBottom: 25,
   },
 
   input: {
@@ -160,11 +172,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#E30613",
     fontWeight: "bold",
-  },
-
-  footerText: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#777",
   },
 });

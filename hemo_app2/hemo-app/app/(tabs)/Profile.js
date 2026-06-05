@@ -12,47 +12,47 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 
-import db from "../registros";
+const API_URL = "http://192.168.1.20:8000";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     loadUser();
-    loadDoacoes();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadUser();
-      loadDoacoes();
     }, [])
   );
 
   async function loadUser() {
     try {
-      const data = await AsyncStorage.getItem("user_profile");
+      const usuarioSalvo = await AsyncStorage.getItem("usuario");
 
-      if (data) {
-        setUser(JSON.parse(data));
+      if (!usuarioSalvo) {
+        router.replace("/");
+        return;
       }
+
+      const usuario = JSON.parse(usuarioSalvo);
+
+      const response = await fetch(
+        `${API_URL}/historico/${usuario.id}`
+      );
+
+      const historico = await response.json();
+
+      const fotoSalva = await AsyncStorage.getItem("foto_perfil");
+
+      setUser({
+        ...usuario,
+        photo: fotoSalva,
+        doacoes: historico.length,
+      });
     } catch (err) {
       console.log("Erro ao carregar usuário:", err);
-    }
-  }
-
-  async function loadDoacoes() {
-    try {
-      const resultado = db.getFirstSync(`
-        SELECT COUNT(*) as total FROM doacoes
-      `);
-
-      setUser((prev) => ({
-        ...prev,
-        doacoes: resultado.total,
-      }));
-    } catch (err) {
-      console.log("Erro ao contar doações:", err);
     }
   }
 
@@ -65,29 +65,30 @@ export default function Profile() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      quality: 1,
-    });
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        quality: 1,
+      });
 
     if (!result.canceled) {
       const uri = result.assets[0].uri;
 
-      const updatedUser = { ...user, photo: uri };
+      await AsyncStorage.setItem("foto_perfil", uri);
 
-      setUser(updatedUser);
-
-      await AsyncStorage.setItem(
-        "user_profile",
-        JSON.stringify(updatedUser)
-      );
+      setUser((prev) => ({
+        ...prev,
+        photo: uri,
+      }));
     }
   }
 
   async function handleLogout() {
     try {
-      await AsyncStorage.removeItem("user_profile");
+      await AsyncStorage.removeItem("usuario");
+      await AsyncStorage.removeItem("foto_perfil");
       await AsyncStorage.removeItem("onboarding_done");
+
       router.replace("/");
     } catch (err) {
       console.log("Erro ao sair:", err);
@@ -96,36 +97,44 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      {/* AVATAR */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+        <TouchableOpacity
+          onPress={pickImage}
+          style={styles.avatarContainer}
+        >
           {user?.photo ? (
-            <Image source={{ uri: user.photo }} style={styles.avatar} />
+            <Image
+              source={{ uri: user.photo }}
+              style={styles.avatar}
+            />
           ) : (
             <View style={styles.placeholder}>
-              <FontAwesome name="user" size={50} color="#aaa" />
+              <FontAwesome
+                name="user"
+                size={50}
+                color="#aaa"
+              />
             </View>
           )}
 
           <View style={styles.cameraIcon}>
-            <FontAwesome name="camera" size={14} color="white" />
+            <FontAwesome
+              name="camera"
+              size={14}
+              color="white"
+            />
           </View>
         </TouchableOpacity>
 
         <Text style={styles.name}>
-          {user?.email?.split("@")[0] || "Usuário"}
+          {user?.nome || "Usuário"}
         </Text>
 
         <Text style={styles.info}>
-          Tipo sanguíneo: {user?.tipo_sanguineo || "--"}
-        </Text>
-
-        <Text style={styles.info}>
-          Sexo: {user?.sexo || "--"}
+          {user?.email || "email não informado"}
         </Text>
       </View>
 
-      {/* CARD INFO */}
       <View style={styles.card}>
         <Item
           icon="heart"
@@ -134,13 +143,12 @@ export default function Profile() {
         />
 
         <Item
-          icon="map-marker"
-          label="Cidade"
-          value={user?.cidade || "Poços de Caldas"}
+          icon="envelope"
+          label="E-mail"
+          value={user?.email || "--"}
         />
       </View>
 
-      {/* EDITAR PERFIL */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => router.push("/EditProfile")}
@@ -149,20 +157,30 @@ export default function Profile() {
         <Text style={styles.buttonText}> Editar perfil</Text>
       </TouchableOpacity>
 
-      {/* LOGOUT */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <FontAwesome name="sign-out" size={18} color="white" />
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <FontAwesome
+          name="sign-out"
+          size={18}
+          color="white"
+        />
         <Text style={styles.logoutText}> Sair da conta</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-/* ITEM */
 function Item({ icon, label, value }) {
   return (
     <View style={styles.item}>
-      <FontAwesome name={icon} size={18} color="#E30613" />
+      <FontAwesome
+        name={icon}
+        size={18}
+        color="#E30613"
+      />
+
       <View style={{ marginLeft: 10 }}>
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.value}>{value}</Text>
@@ -171,7 +189,6 @@ function Item({ icon, label, value }) {
   );
 }
 
-/* STYLES */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

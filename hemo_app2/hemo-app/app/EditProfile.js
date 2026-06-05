@@ -21,20 +21,19 @@ export default function EditProfile() {
   const [bloodType, setBloodType] = useState("");
   const [gender, setGender] = useState("");
 
-  // 📥 CARREGA DADOS SALVOS
   useEffect(() => {
     loadUser();
   }, []);
 
   async function loadUser() {
     try {
-      const data = await AsyncStorage.getItem("user_profile");
+      const data = await AsyncStorage.getItem("usuario");
 
       if (data) {
         const parsed = JSON.parse(data);
 
         setUser(parsed);
-        setName(parsed.email?.split("@")[0] || "");
+        setName(parsed.nome || "");
         setBloodType(parsed.tipo_sanguineo || "");
         setGender(parsed.sexo || "");
       }
@@ -45,19 +44,17 @@ export default function EditProfile() {
     }
   }
 
-  // 💾 SALVA ALTERAÇÕES
   async function handleSave() {
     try {
       const updatedUser = {
         ...user,
-        email: user?.email,
+        nome: name,
         tipo_sanguineo: bloodType,
         sexo: gender,
-        nome: name,
       };
 
       await AsyncStorage.setItem(
-        "user_profile",
+        "usuario",
         JSON.stringify(updatedUser)
       );
 
@@ -79,14 +76,12 @@ export default function EditProfile() {
 
   return (
     <View style={styles.container}>
-      {/* VOLTAR */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#E30613" />
       </TouchableOpacity>
 
       <Text style={styles.title}>Editar Perfil</Text>
 
-      {/* NOME */}
       <Text style={styles.label}>Nome</Text>
       <TextInput
         style={styles.input}
@@ -95,7 +90,6 @@ export default function EditProfile() {
         placeholder="Digite seu nome"
       />
 
-      {/* TIPO SANGUÍNEO */}
       <Text style={styles.label}>Tipo Sanguíneo</Text>
       <TextInput
         style={styles.input}
@@ -104,7 +98,6 @@ export default function EditProfile() {
         placeholder="Ex: O+"
       />
 
-      {/* SEXO */}
       <Text style={styles.label}>Sexo</Text>
 
       <View style={styles.genderContainer}>
@@ -143,7 +136,6 @@ export default function EditProfile() {
         </TouchableOpacity>
       </View>
 
-      {/* SALVAR */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Salvar Alterações</Text>
       </TouchableOpacity>
@@ -151,7 +143,6 @@ export default function EditProfile() {
   );
 }
 
-/* ESTILOS */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

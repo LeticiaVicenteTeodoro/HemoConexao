@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import estadosCidades from "./cidadeseestados.json";
-import db, { createTables } from "./registros";
+
+const API_URL = "http://192.168.1.20:8000";
 
 export default function Registrar() {
   const navigation = useNavigation();
@@ -22,30 +25,72 @@ export default function Registrar() {
   const [tipo, setTipo] = useState("");
   const [obs, setObs] = useState("");
 
-  useEffect(() => {
-    createTables();
-  }, []);
-
   const estados = Object.keys(estadosCidades);
-  const cidades = estado ? estadosCidades[estado] : [];
+  const cidades = estado
+    ? estadosCidades[estado]
+    : [];
 
-  const salvar = () => {
-    if (!data || !estado || !cidade || !tipo) {
-      Alert.alert("Erro", "Preencha data, estado, cidade e tipo sanguíneo.");
+  const salvar = async () => {
+    if (
+      !data ||
+      !estado ||
+      !cidade ||
+      !tipo
+    ) {
+      Alert.alert(
+        "Erro",
+        "Preencha data, estado, cidade e tipo sanguíneo."
+      );
       return;
     }
 
     try {
-      db.runSync(
-        `
-        INSERT INTO doacoes
-        (data, local, tipo, observacao)
-        VALUES (?, ?, ?, ?)
-      `,
-        [data, `${cidade}, ${estado}`, tipo, obs]
+      const usuarioSalvo =
+        await AsyncStorage.getItem(
+          "usuario"
+        );
+
+      if (!usuarioSalvo) {
+        Alert.alert(
+          "Erro",
+          "Usuário não encontrado."
+        );
+        return;
+      }
+
+      const usuario =
+        JSON.parse(usuarioSalvo);
+
+      const response = await fetch(
+        `${API_URL}/doacao?usuario_id=${usuario.id}&data=${encodeURIComponent(
+          data
+        )}&local=${encodeURIComponent(
+          `${cidade}, ${estado}`
+        )}&tipo=${encodeURIComponent(
+          tipo
+        )}&observacao=${encodeURIComponent(
+          obs
+        )}`,
+        {
+          method: "POST",
+        }
       );
 
-      Alert.alert("Sucesso", "Doação registrada!");
+      const resultado =
+        await response.json();
+
+      if (!resultado.sucesso) {
+        Alert.alert(
+          "Erro",
+          "Falha ao registrar doação."
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Sucesso",
+        "Doação registrada!"
+      );
 
       setData("");
       setEstado("");
@@ -54,21 +99,30 @@ export default function Registrar() {
       setObs("");
     } catch (error) {
       console.log(error);
-      Alert.alert("Erro ao salvar");
+
+      Alert.alert(
+        "Erro",
+        "Não foi possível conectar ao servidor."
+      );
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* SETA DE VOLTAR */}
       <TouchableOpacity
-        onPress={() => navigation.goBack()}
+        onPress={() =>
+          navigation.goBack()
+        }
         style={styles.backButton}
       >
-        <Text style={styles.backText}>←</Text>
+        <Text style={styles.backText}>
+          ←
+        </Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Registrar Doação</Text>
+      <Text style={styles.title}>
+        Registrar Doação
+      </Text>
 
       <TextInput
         placeholder="Data (01/06/2026)"
@@ -85,9 +139,17 @@ export default function Registrar() {
             setCidade("");
           }}
         >
-          <Picker.Item label="Selecione o Estado" value="" />
+          <Picker.Item
+            label="Selecione o Estado"
+            value=""
+          />
+
           {estados.map((estado) => (
-            <Picker.Item key={estado} label={estado} value={estado} />
+            <Picker.Item
+              key={estado}
+              label={estado}
+              value={estado}
+            />
           ))}
         </Picker>
       </View>
@@ -96,26 +158,69 @@ export default function Registrar() {
         <Picker
           selectedValue={cidade}
           enabled={estado !== ""}
-          onValueChange={(value) => setCidade(value)}
+          onValueChange={(value) =>
+            setCidade(value)
+          }
         >
-          <Picker.Item label="Selecione a Cidade" value="" />
+          <Picker.Item
+            label="Selecione a Cidade"
+            value=""
+          />
+
           {cidades.map((cidade) => (
-            <Picker.Item key={cidade} label={cidade} value={cidade} />
+            <Picker.Item
+              key={cidade}
+              label={cidade}
+              value={cidade}
+            />
           ))}
         </Picker>
       </View>
 
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={tipo} onValueChange={(value) => setTipo(value)}>
-          <Picker.Item label="Selecione o Tipo Sanguíneo" value="" />
-          <Picker.Item label="A+" value="A+" />
-          <Picker.Item label="A-" value="A-" />
-          <Picker.Item label="B+" value="B+" />
-          <Picker.Item label="B-" value="B-" />
-          <Picker.Item label="AB+" value="AB+" />
-          <Picker.Item label="AB-" value="AB-" />
-          <Picker.Item label="O+" value="O+" />
-          <Picker.Item label="O-" value="O-" />
+        <Picker
+          selectedValue={tipo}
+          onValueChange={(value) =>
+            setTipo(value)
+          }
+        >
+          <Picker.Item
+            label="Selecione o Tipo Sanguíneo"
+            value=""
+          />
+
+          <Picker.Item
+            label="A+"
+            value="A+"
+          />
+          <Picker.Item
+            label="A-"
+            value="A-"
+          />
+          <Picker.Item
+            label="B+"
+            value="B+"
+          />
+          <Picker.Item
+            label="B-"
+            value="B-"
+          />
+          <Picker.Item
+            label="AB+"
+            value="AB+"
+          />
+          <Picker.Item
+            label="AB-"
+            value="AB-"
+          />
+          <Picker.Item
+            label="O+"
+            value="O+"
+          />
+          <Picker.Item
+            label="O-"
+            value="O-"
+          />
         </Picker>
       </View>
 
@@ -127,8 +232,13 @@ export default function Registrar() {
         multiline
       />
 
-      <TouchableOpacity style={styles.button} onPress={salvar}>
-        <Text style={styles.buttonText}>Salvar</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={salvar}
+      >
+        <Text style={styles.buttonText}>
+          Salvar
+        </Text>
       </TouchableOpacity>
     </View>
   );

@@ -8,8 +8,9 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import db, { createTables } from "./registros";
+const API_URL = "http://192.168.1.20:8000";
 
 export default function Historico() {
   const navigation = useNavigation();
@@ -17,44 +18,43 @@ export default function Historico() {
   const [dados, setDados] = useState([]);
 
   useEffect(() => {
-    createTables();
     carregar();
   }, []);
 
-  const carregar = () => {
+  const carregar = async () => {
     try {
-      const resultado = db.getAllSync(`
-        SELECT *
-        FROM doacoes
-        ORDER BY id DESC
-      `);
+      const usuarioSalvo = await AsyncStorage.getItem("usuario");
+
+      if (!usuarioSalvo) {
+        Alert.alert("Erro", "Usuário não encontrado.");
+        return;
+      }
+
+      const usuario = JSON.parse(usuarioSalvo);
+
+      const response = await fetch(
+        `${API_URL}/historico/${usuario.id}`
+      );
+
+      const resultado = await response.json();
 
       setDados(resultado);
     } catch (error) {
       console.log(error);
+      Alert.alert("Erro", "Não foi possível carregar o histórico.");
     }
   };
 
   const excluir = (id) => {
     Alert.alert(
       "Excluir",
-      "Deseja remover este registro?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          onPress: () => {
-            db.runSync("DELETE FROM doacoes WHERE id = ?", [id]);
-            carregar();
-          },
-        },
-      ]
+      "A exclusão ainda não está conectada ao backend.",
+      [{ text: "OK" }]
     );
   };
 
   return (
     <View style={styles.container}>
-      {/* SETA DE VOLTAR */}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
@@ -75,7 +75,9 @@ export default function Historico() {
             <Text style={styles.text}>📅 {item.data}</Text>
             <Text style={styles.text}>🏥 {item.local}</Text>
             <Text style={styles.text}>🩸 {item.tipo}</Text>
-            <Text style={styles.text}>📝 {item.observacao}</Text>
+            <Text style={styles.text}>
+              📝 {item.observacao || "Sem observações"}
+            </Text>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
