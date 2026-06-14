@@ -323,3 +323,17 @@ def historico(usuario_id: int):
         if conn:
             conn.close()
 
+@app.delete("/usuario/{email}")
+def deletar_usuario(email: str):
+    conn = conectar()
+    cur = conn.cursor()
+
+    cur.execute(
+        "DELETE FROM usuarios WHERE email = ?",
+        (email,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {"sucesso": True}

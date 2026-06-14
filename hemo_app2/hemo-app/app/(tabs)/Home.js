@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -12,23 +17,70 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-export default function Home() {
-  // começa oculto até verificar o AsyncStorage
-  const [showOnboarding, setShowOnboarding] = useState(false);
+const API_URL = "http://192.168.1.20:8000";
 
-  // verifica se o popup já foi exibido alguma vez
+const MARCOS = [1, 5, 15, 20, 25, 30, 35, 40, 45, 50, 75, 100];
+
+function calcularMarco(total) {
+  const marcoAtual = MARCOS.filter((m) => total >= m).pop() || 0;
+  const proximoMarco = MARCOS.find((m) => total < m) || null;
+
+  return {
+    marcoAtual,
+    proximoMarco,
+    faltam: proximoMarco ? proximoMarco - total : 0,
+  };
+}
+
+function nomeDoMarco(marco) {
+  if (marco >= 100) return "Herói da Vida";
+  if (marco >= 75) return "Lenda Solidária";
+  if (marco >= 50) return "Doador Ouro";
+  if (marco >= 35) return "Doador Experiente";
+  if (marco >= 25) return "Doador Prata";
+  if (marco >= 15) return "Doador Frequente";
+  if (marco >= 5) return "Doador Iniciante";
+  if (marco >= 1) return "Primeira Doação";
+
+  return "Novo Doador";
+}
+
+function calcularProximaDoacao(dataTexto) {
+  const partes = dataTexto.split("/");
+
+  const data = new Date(
+    partes[2],
+    partes[1] - 1,
+    partes[0]
+  );
+
+  data.setDate(data.getDate() + 90);
+
+  return data.toLocaleDateString("pt-BR");
+}
+
+export default function Home() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+  const [totalDoacoes, setTotalDoacoes] = useState(0);
+  const [proximaDoacao, setProximaDoacao] = useState(null);
+
   useEffect(() => {
     checkFirstAccess();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      carregarResumo();
+    }, [])
+  );
+
   const checkFirstAccess = async () => {
     try {
-      // chave que indica se o popup inicial já foi mostrado
       const alreadyShown = await AsyncStorage.getItem(
         "welcome_popup_shown"
       );
 
-      // se nunca foi mostrado, exibe e salva a marcação
       if (!alreadyShown) {
         setShowOnboarding(true);
         await AsyncStorage.setItem(
@@ -41,7 +93,39 @@ export default function Home() {
     }
   };
 
-  // inicia o onboarding em 5 passos
+  const carregarResumo = async () => {
+    try {
+      const usuarioSalvo = await AsyncStorage.getItem("usuario");
+
+      if (!usuarioSalvo) return;
+
+      const user = JSON.parse(usuarioSalvo);
+      setUsuario(user);
+
+      const response = await fetch(`${API_URL}/historico/${user.id}`);
+      const historico = await response.json();
+
+      setTotalDoacoes(historico.length);
+
+      if (historico.length > 0) {
+        const ultimaDoacao = historico[0];
+
+        const proxima = calcularProximaDoacao(
+          ultimaDoacao.data
+        );
+
+        setProximaDoacao(proxima);
+      } else {
+        setProximaDoacao(null);
+      }
+    } catch (error) {
+      console.log("Erro ao carregar resumo:", error);
+    }
+  };
+
+  const { marcoAtual, proximoMarco, faltam } =
+    calcularMarco(totalDoacoes);
+
   const startOnboarding = () => {
     setShowOnboarding(false);
     router.push("/steps/Step1");
@@ -51,12 +135,42 @@ export default function Home() {
     <View style={styles.container}>
       <Text style={styles.title}>HemoConexão</Text>
 
+      <View style={styles.gamificationCard}>
+        <Text style={styles.hello}>
+          Olá, {usuario?.nome || "doador(a)"} ❤️
+        </Text>
+
+        <Text style={styles.totalText}>
+          Você já realizou {totalDoacoes} doação(ões).
+        </Text>
+
+        <Text style={styles.badgeText}>
+          🏅 {nomeDoMarco(marcoAtual)}
+        </Text>
+
+        {proximaDoacao && (
+          <Text style={styles.nextText}>
+            ⏰ Próxima doação: {proximaDoacao}
+          </Text>
+        )}
+
+        {proximoMarco ? (
+          <Text style={styles.nextText}>
+            Faltam {faltam} doação(ões) para o marco de {proximoMarco}.
+          </Text>
+        ) : (
+          <Text style={styles.nextText}>
+            Você alcançou o maior marco de doações!
+          </Text>
+        )}
+      </View>
+
       <View style={styles.grid}>
         <Item
-  icon="plus"
-  text="Registrar"
-  onPress={() => router.push("/Registrar")}
-/>
+          icon="plus"
+          text="Registrar"
+          onPress={() => router.push("/Registrar")}
+        />
 
         <Item
           icon="calendar"
@@ -64,11 +178,11 @@ export default function Home() {
           link="https://www.mg.gov.br/agendamento_servico/doacao-de-sangue"
         />
 
-       <Item
-  icon="heart"
-  text="Histórico"
-  onPress={() => router.push("/Historico")}
-/>
+        <Item
+          icon="heart"
+          text="Histórico"
+          onPress={() => router.push("/Historico")}
+        />
 
         <Item
           icon="question"
@@ -95,7 +209,6 @@ export default function Home() {
         />
       </View>
 
-      {/* Popup exibido somente na primeira vez */}
       <Modal visible={showOnboarding} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modal}>
@@ -120,7 +233,6 @@ export default function Home() {
   );
 }
 
-/* ITEM */
 function Item({ icon, text, link, onPress }) {
   const handlePress = async () => {
     if (onPress) return onPress();
@@ -139,7 +251,6 @@ function Item({ icon, text, link, onPress }) {
   );
 }
 
-/* STYLES */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -149,7 +260,41 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     color: "#E30613",
+    marginBottom: 15,
+    fontWeight: "bold",
+  },
+
+  gamificationCard: {
+    backgroundColor: "#fff0f0",
+    borderRadius: 15,
+    padding: 15,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#ffd0d0",
+  },
+
+  hello: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#E30613",
+    marginBottom: 5,
+  },
+
+  totalText: {
+    fontSize: 14,
+    color: "#444",
+    marginBottom: 5,
+  },
+
+  badgeText: {
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
+  nextText: {
+    fontSize: 13,
+    color: "#666",
   },
 
   grid: {

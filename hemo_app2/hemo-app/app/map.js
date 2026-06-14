@@ -59,7 +59,6 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
 
-      {/* SETA DE VOLTAR */}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}

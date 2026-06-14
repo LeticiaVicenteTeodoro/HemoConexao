@@ -14,6 +14,32 @@ import * as ImagePicker from "expo-image-picker";
 
 const API_URL = "http://192.168.1.20:8000";
 
+const MARCOS = [1, 5, 15, 20, 25, 30, 35, 40, 45, 50, 75, 100];
+
+function calcularMarco(total) {
+  const marcoAtual = MARCOS.filter((m) => total >= m).pop() || 0;
+  const proximoMarco = MARCOS.find((m) => total < m) || null;
+
+  return {
+    marcoAtual,
+    proximoMarco,
+    faltam: proximoMarco ? proximoMarco - total : 0,
+  };
+}
+
+function nomeDoMarco(marco) {
+  if (marco >= 100) return "Herói da Vida";
+  if (marco >= 75) return "Lenda Solidária";
+  if (marco >= 50) return "Doador Ouro";
+  if (marco >= 35) return "Doador Experiente";
+  if (marco >= 25) return "Doador Prata";
+  if (marco >= 15) return "Doador Frequente";
+  if (marco >= 5) return "Doador Iniciante";
+  if (marco >= 1) return "Primeira Doação";
+
+  return "Novo Doador";
+}
+
 export default function Profile() {
   const [user, setUser] = useState(null);
 
@@ -95,6 +121,9 @@ export default function Profile() {
     }
   }
 
+  const total = user?.doacoes || 0;
+  const { marcoAtual, proximoMarco, faltam } = calcularMarco(total);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -135,17 +164,47 @@ export default function Profile() {
         </Text>
       </View>
 
+      <View style={styles.gamificationCard}>
+        <Text style={styles.gamificationTitle}>
+          🩸 Jornada de doações
+        </Text>
+
+        <Text style={styles.gamificationText}>
+          Total de doações: {total}
+        </Text>
+
+        <Text style={styles.badge}>
+          🏅 {nomeDoMarco(marcoAtual)}
+        </Text>
+
+        {proximoMarco ? (
+          <Text style={styles.nextGoal}>
+            Faltam {faltam} doação(ões) para o marco de {proximoMarco}.
+          </Text>
+        ) : (
+          <Text style={styles.nextGoal}>
+            Você alcançou o maior marco de doações!
+          </Text>
+        )}
+      </View>
+
       <View style={styles.card}>
         <Item
           icon="heart"
           label="Doações realizadas"
-          value={user?.doacoes || "0"}
+          value={total}
         />
 
         <Item
           icon="envelope"
           label="E-mail"
           value={user?.email || "--"}
+        />
+
+        <Item
+          icon="trophy"
+          label="Selo atual"
+          value={nomeDoMarco(marcoAtual)}
         />
       </View>
 
@@ -198,7 +257,7 @@ const styles = StyleSheet.create({
 
   header: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
 
   avatarContainer: {
@@ -245,6 +304,38 @@ const styles = StyleSheet.create({
   info: {
     color: "#666",
     marginTop: 4,
+  },
+
+  gamificationCard: {
+    backgroundColor: "#fff0f0",
+    padding: 15,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#ffd0d0",
+    marginBottom: 15,
+  },
+
+  gamificationTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#E30613",
+    marginBottom: 8,
+  },
+
+  gamificationText: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+
+  badge: {
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
+  nextGoal: {
+    fontSize: 13,
+    color: "#666",
   },
 
   card: {
