@@ -8,6 +8,8 @@ import {
   Alert,
 } from "react-native";
 import { router } from "expo-router";
+import { Picker } from "@react-native-picker/picker";
+
 
 const API_URL = "http://192.168.1.20:8000";
 
@@ -32,7 +34,9 @@ export default function Cadastro() {
           nome
         )}&email=${encodeURIComponent(
           email
-        )}&senha=${encodeURIComponent(senha)}`,
+        )}&senha=${encodeURIComponent(
+          senha)}
+        )}&tipo_sanguineo=${encodeURIComponent(tipo)}`,
         {
           method: "POST",
         }
@@ -93,12 +97,22 @@ export default function Cadastro() {
         style={styles.input}
       />
 
-      <TextInput
-        placeholder="Tipo sanguíneo (opcional)"
-        value={tipo}
-        onChangeText={setTipo}
-        style={styles.input}
-      />
+      <View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={tipo}
+    onValueChange={(value) => setTipo(value)}
+  >
+    <Picker.Item label="Tipo sanguíneo (opcional)" value="" />
+    <Picker.Item label="A+" value="A+" />
+    <Picker.Item label="A-" value="A-" />
+    <Picker.Item label="B+" value="B+" />
+    <Picker.Item label="B-" value="B-" />
+    <Picker.Item label="AB+" value="AB+" />
+    <Picker.Item label="AB-" value="AB-" />
+    <Picker.Item label="O+" value="O+" />
+    <Picker.Item label="O-" value="O-" />
+  </Picker>
+</View>
 
       <TouchableOpacity
         style={styles.button}
@@ -147,6 +161,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
+  pickerContainer: {
+  borderWidth: 1,
+  borderColor: "#ddd",
+  borderRadius: 10,
+  marginBottom: 15,
+  backgroundColor: "#fff",
+},
 
   buttonText: {
     color: "#fff",

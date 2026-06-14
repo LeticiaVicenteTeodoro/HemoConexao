@@ -53,6 +53,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    try:
+        cur.execute("ALTER TABLE usuarios ADD COLUMN tipo_sanguineo TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -85,9 +90,8 @@ init_db()
 def home():
     return {"status": "ok"}
 
-
 @app.post("/cadastro")
-def cadastro(nome: str, email: str, senha: str):
+def cadastro(nome: str, email: str, senha: str, tipo_sanguineo: str = ""):
     token = str(random.randint(100000, 999999))
     conn = None
 
@@ -98,10 +102,10 @@ def cadastro(nome: str, email: str, senha: str):
         cur.execute(
             """
             INSERT INTO usuarios
-            (nome, email, senha, token, validado)
-            VALUES (?, ?, ?, ?, ?)
+            (nome, email, senha, token, validado, tipo_sanguineo)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (nome, email, senha, token, 0)
+            (nome, email, senha, token, 0, tipo_sanguineo)
         )
 
         conn.commit()
@@ -199,7 +203,7 @@ def login(email: str, senha: str):
 
         cur.execute(
             """
-            SELECT id, nome, email, validado
+            SELECT id, nome, email, validado, tipo_sanguineo
             FROM usuarios
             WHERE email = ?
             AND senha = ?
@@ -225,7 +229,8 @@ def login(email: str, senha: str):
             "sucesso": True,
             "id": usuario[0],
             "nome": usuario[1],
-            "email": usuario[2]
+            "email": usuario[2],
+            "tipo_sanguineo": usuario[4]
         }
 
     except Exception as e:

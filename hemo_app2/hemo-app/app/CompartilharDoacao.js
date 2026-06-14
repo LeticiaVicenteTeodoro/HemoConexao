@@ -11,7 +11,7 @@ import * as Sharing from "expo-sharing";
 import { router, useLocalSearchParams } from "expo-router";
 
 export default function CompartilharDoacao() {
-  const cardRef = useRef();
+  const cardRef = useRef(null);
 
   const {
     data,
@@ -23,9 +23,14 @@ export default function CompartilharDoacao() {
 
   const compartilhar = async () => {
     try {
+      await new Promise((resolve) =>
+        setTimeout(resolve, 500)
+      );
+
       const uri = await captureRef(cardRef, {
         format: "png",
         quality: 1,
+        result: "tmpfile",
       });
 
       const disponivel =
@@ -42,6 +47,7 @@ export default function CompartilharDoacao() {
       await Sharing.shareAsync(uri);
     } catch (error) {
       console.log(error);
+
       Alert.alert(
         "Erro",
         "Não foi possível compartilhar."
@@ -51,10 +57,18 @@ export default function CompartilharDoacao() {
 
   return (
     <View style={styles.container}>
-      <View ref={cardRef} style={styles.card}>
-        <Text style={styles.logo}>HemoConexão</Text>
+      <View
+        ref={cardRef}
+        collapsable={false}
+        style={styles.card}
+      >
+        <Text style={styles.logo}>
+          HemoConexão
+        </Text>
 
-        <Text style={styles.bigIcon}>🩸</Text>
+        <Text style={styles.bigIcon}>
+          🩸
+        </Text>
 
         <Text style={styles.title}>
           Eu doei sangue!
@@ -125,6 +139,7 @@ const styles = StyleSheet.create({
     padding: 25,
     alignItems: "center",
     marginBottom: 25,
+    overflow: "hidden",
   },
 
   logo: {

@@ -6,20 +6,40 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Platform,
 } from "react-native";
 
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import estadosCidades from "./cidadeseestados.json";
 
 const API_URL = "http://192.168.1.20:8000";
 
+function obterSelo(total) {
+  if (total >= 100) return "❤️ Herói da Vida";
+  if (total >= 75) return "💎 Lenda Solidária";
+  if (total >= 50) return "🥇 Doador Ouro";
+  if (total >= 35) return "🏆 Doador Experiente";
+  if (total >= 25) return "🥈 Doador Prata";
+  if (total >= 15) return "⭐ Doador Frequente";
+  if (total >= 5) return "🥉 Doador Iniciante";
+
+  return "🌱 Primeira Doação";
+}
+
+function formatarData(data) {
+  return data.toLocaleDateString("pt-BR");
+}
+
 export default function Registrar() {
   const navigation = useNavigation();
 
-  const [data, setData] = useState("");
+  const [data, setData] = useState(null);
+  const [mostrarData, setMostrarData] = useState(false);
   const [estado, setEstado] = useState("");
   const [cidade, setCidade] = useState("");
   const [tipo, setTipo] = useState("");
@@ -31,18 +51,22 @@ export default function Registrar() {
     : [];
 
   const salvar = async () => {
+
+
     if (
-      !data ||
-      !estado ||
-      !cidade ||
-      !tipo
-    ) {
-      Alert.alert(
-        "Erro",
-        "Preencha data, estado, cidade e tipo sanguíneo."
-      );
-      return;
-    }
+  !data ||
+  !estado ||
+  !cidade ||
+  !tipo
+) {
+  Alert.alert(
+    "Erro",
+    "Preencha data, estado, cidade e tipo sanguíneo."
+  );
+  return;
+}
+
+const dataFormatada = formatarData(data);
 
     try {
       const usuarioSalvo =
@@ -63,7 +87,7 @@ export default function Registrar() {
 
       const response = await fetch(
         `${API_URL}/doacao?usuario_id=${usuario.id}&data=${encodeURIComponent(
-          data
+          dataFormatada
         )}&local=${encodeURIComponent(
           `${cidade}, ${estado}`
         )}&tipo=${encodeURIComponent(
@@ -87,16 +111,37 @@ export default function Registrar() {
         return;
       }
 
-      Alert.alert(
-        "Sucesso",
-        "Doação registrada!"
-      );
+    Alert.alert(
+      "Sucesso",
+      "Doação registrada!"
+    );
 
-      setData("");
-      setEstado("");
-      setCidade("");
-      setTipo("");
-      setObs("");
+    const historicoResponse = await fetch(
+      `${API_URL}/historico/${usuario.id}`
+    );
+
+    const historico = await historicoResponse.json();
+
+    const total = historico.length;
+    const selo = obterSelo(total);
+
+    router.push({
+      pathname: "./CompartilharDoacao",
+      params: {
+        data: dataFormatada,
+        local: `${cidade}, ${estado}`,
+        tipo: tipo,
+        total: total,
+        selo: selo,
+      },
+    });
+
+    setData(null);
+    setEstado("");
+    setCidade("");
+    setTipo("");
+    setObs("");
+
     } catch (error) {
       console.log(error);
 
@@ -124,12 +169,37 @@ export default function Registrar() {
         Registrar Doação
       </Text>
 
-      <TextInput
-        placeholder="Data (01/06/2026)"
-        value={data}
-        onChangeText={setData}
-        style={styles.input}
-      />
+      <TouchableOpacity
+  style={styles.input}
+  onPress={() => setMostrarData(true)}
+>
+  <Text
+    style={
+      data
+        ? styles.dateText
+        : styles.placeholderText
+    }
+  >
+    {data
+      ? `📅 ${formatarData(data)}`
+      : "📅 Toque para selecionar a data"}
+  </Text>
+</TouchableOpacity>
+
+      {mostrarData && (
+        <DateTimePicker
+          value={data || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, selectedDate) => {
+            setMostrarData(false);
+
+            if (selectedDate) {
+              setData(selectedDate);
+            }
+          }}
+        />
+      )}
 
       <View style={styles.pickerContainer}>
         <Picker
@@ -283,7 +353,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: "#fff",
   },
+dateText: {
+  color: "#333",
+},
 
+placeholderText: {
+  color: "#aaa",
+},
   button: {
     backgroundColor: "#E30613",
     padding: 15,

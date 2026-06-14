@@ -45,7 +45,10 @@ function nomeDoMarco(marco) {
   return "Novo Doador";
 }
 
-function calcularProximaDoacao(dataTexto) {
+function calcularProximaDoacao(
+  dataTexto,
+  sexo
+) {
   const partes = dataTexto.split("/");
 
   const data = new Date(
@@ -54,9 +57,18 @@ function calcularProximaDoacao(dataTexto) {
     partes[0]
   );
 
-  data.setDate(data.getDate() + 90);
+  const dias =
+    sexo === "Masculino"
+      ? 60
+      : 90;
 
-  return data.toLocaleDateString("pt-BR");
+  data.setDate(
+    data.getDate() + dias
+  );
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  );
 }
 
 export default function Home() {
@@ -102,6 +114,8 @@ export default function Home() {
       const user = JSON.parse(usuarioSalvo);
       setUsuario(user);
 
+      
+
       const response = await fetch(`${API_URL}/historico/${user.id}`);
       const historico = await response.json();
 
@@ -110,9 +124,11 @@ export default function Home() {
       if (historico.length > 0) {
         const ultimaDoacao = historico[0];
 
-        const proxima = calcularProximaDoacao(
-          ultimaDoacao.data
-        );
+        const proxima =
+          calcularProximaDoacao(
+            ultimaDoacao.data,
+            user?.sexo
+          );
 
         setProximaDoacao(proxima);
       } else {
