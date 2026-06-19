@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { agendarNotificacaoProximaDoacao } from "./notificacoes";
 
 import estadosCidades from "./cidadeseestados.json";
 
@@ -114,6 +115,11 @@ const dataFormatada = formatarData(data);
     Alert.alert(
       "Sucesso",
       "Doação registrada!"
+    );
+
+    await agendarNotificacaoProximaDoacao(
+      data,
+      usuario?.sexo
     );
 
     const historicoResponse = await fetch(

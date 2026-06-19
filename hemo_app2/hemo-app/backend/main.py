@@ -3,6 +3,9 @@ import sqlite3
 import random
 import os
 import resend
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
