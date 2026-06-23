@@ -12,7 +12,7 @@ import {
   Linking,
   Modal,
 } from "react-native";
-
+import { registrarPushToken } from "../pushEstoque";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -77,9 +77,10 @@ export default function Home() {
   const [totalDoacoes, setTotalDoacoes] = useState(0);
   const [proximaDoacao, setProximaDoacao] = useState(null);
 
-  useEffect(() => {
-    checkFirstAccess();
-  }, []);
+useEffect(() => {
+  checkFirstAccess();
+  registrarPushToken();
+}, []);
 
   useFocusEffect(
     useCallback(() => {

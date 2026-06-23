@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "555246546116",
+    "project_id": "hemo-conexao",
+    "storage_bucket": "hemo-conexao.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555246546116:android:0f958754287ed714e72d91",
+        "android_client_info": {
+          "package_name": "com.anonymous.hemoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNBbYEoIhx5KIQLO4sD8hqo4FPpsV4Zto"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

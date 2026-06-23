@@ -3,6 +3,7 @@ import sqlite3
 import random
 import os
 import resend
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,6 +44,14 @@ def init_db():
         tipo TEXT,
         observacao TEXT,
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    )
+    """)
+
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS push_tokens(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT UNIQUE
     )
     """)
 
@@ -345,3 +354,84 @@ def deletar_usuario(email: str):
     conn.close()
 
     return {"sucesso": True}
+
+@app.post("/registrar_push_token")
+def registrar_push_token(token: str):
+    conn = None
+
+    try:
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO push_tokens(token)
+            VALUES(?)
+            """,
+            (token,)
+        )
+
+        conn.commit()
+
+        return {
+            "sucesso": True,
+            "mensagem": "Token salvo"
+        }
+
+    except Exception as e:
+        print("ERRO PUSH TOKEN:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/notificar_estoque_baixo")
+def notificar_estoque_baixo():
+    conn = None
+
+    try:
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute("SELECT token FROM push_tokens")
+        tokens = cur.fetchall()
+
+        enviados = []
+
+        for item in tokens:
+            token = item[0]
+
+            resposta = requests.post(
+                "https://api.expo.dev/v2/push/send",
+                json={
+                    "to": token,
+                    "title": "⚠️ Estoque Baixo",
+                    "body": "Alguns tipos sanguíneos estão com estoque baixo. Doe sangue ❤️",
+                    "sound": "default",
+                },
+                timeout=10
+            )
+
+            enviados.append(resposta.json())
+
+        return {
+            "sucesso": True,
+            "tokens_encontrados": len(tokens),
+            "respostas": enviados
+        }
+
+    except Exception as e:
+        print("ERRO NOTIFICAR ESTOQUE:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
