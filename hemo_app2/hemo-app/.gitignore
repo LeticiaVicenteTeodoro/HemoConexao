@@ -37,8 +37,8 @@ yarn-error.*
 
 # Banco SQLite
 banco.db
-*.debug
-
+*.db
+google-services.json
 # typescript
 *.tsbuildinfo
 
