@@ -5,6 +5,9 @@ import os
 import resend
 import requests
 from dotenv import load_dotenv
+import json
+from pathlib import Path
+import subprocess
 
 load_dotenv()
 
@@ -389,12 +392,60 @@ def registrar_push_token(token: str):
         if conn:
             conn.close()
 
+def verificar_tipos_com_estoque_baixo():
+    try:
+        arquivo = Path("data/estoque.json")
+
+        if not arquivo.exists():
+            return []
+
+        with open(arquivo, "r", encoding="utf-8") as f:
+            estoque_atual = json.load(f)
+
+        tipos_baixos = []
+
+        for tipo, status in estoque_atual.items():
+            status = status.strip()
+
+            if (
+                "crítico" in status.lower()
+                or "critico" in status.lower()
+                or "alerta" in status.lower()
+            ):
+                tipos_baixos.append(f"{tipo}: {status}")
+
+        return tipos_baixos
+
+    except Exception as e:
+        print("ERRO ESTOQUE:", e)
+        return []
 
 @app.post("/notificar_estoque_baixo")
 def notificar_estoque_baixo():
     conn = None
 
     try:
+        # 1. Atualiza o arquivo data/estoque.json usando o scraper
+        try:
+            subprocess.run(
+                ["python", "scraper.py"],
+                check=True
+            )
+        except Exception as e:
+            print("ERRO AO ATUALIZAR ESTOQUE:", e)
+
+        # 2. Lê o estoque real salvo no JSON
+        tipos_baixos = verificar_tipos_com_estoque_baixo()
+
+        if not tipos_baixos:
+            return {
+                "sucesso": True,
+                "mensagem": "Nenhum estoque baixo no momento",
+                "notificacao_enviada": False
+            }
+
+        mensagem = "Estoque em atenção: " + ", ".join(tipos_baixos)
+
         conn = conectar()
         cur = conn.cursor()
 
@@ -411,7 +462,7 @@ def notificar_estoque_baixo():
                 json={
                     "to": token,
                     "title": "⚠️ Estoque Baixo",
-                    "body": "Alguns tipos sanguíneos estão com estoque baixo. Doe sangue ❤️",
+                    "body": mensagem,
                     "sound": "default",
                 },
                 timeout=10
@@ -421,6 +472,8 @@ def notificar_estoque_baixo():
 
         return {
             "sucesso": True,
+            "notificacao_enviada": True,
+            "tipos_baixos": tipos_baixos,
             "tokens_encontrados": len(tokens),
             "respostas": enviados
         }
