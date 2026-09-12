@@ -19,7 +19,7 @@ import { router } from "expo-router";
 
 const API_URL = "http://192.168.1.20:8000";
 
-const MARCOS = [1, 5, 15, 20, 25, 30, 35, 40, 45, 50, 75, 100];
+const MARCOS = [1, 3, 5, 10, 15, 20, 25];
 
 function calcularMarco(total) {
   const marcoAtual = MARCOS.filter((m) => total >= m).pop() || 0;
@@ -33,13 +33,12 @@ function calcularMarco(total) {
 }
 
 function nomeDoMarco(marco) {
-  if (marco >= 100) return "Herói da Vida";
-  if (marco >= 75) return "Lenda Solidária";
-  if (marco >= 50) return "Doador Ouro";
-  if (marco >= 35) return "Doador Experiente";
-  if (marco >= 25) return "Doador Prata";
-  if (marco >= 15) return "Doador Frequente";
-  if (marco >= 5) return "Doador Iniciante";
+  if (marco >= 25) return "Herói da Vida";
+  if (marco >= 20) return "Lenda Solidária";
+  if (marco >= 15) return "Doador Ouro";
+  if (marco >= 10) return "Doador Experiente";
+  if (marco >= 5) return "Doador Prata";
+  if (marco >= 3) return "Doador Frequente";
   if (marco >= 1) return "Primeira Doação";
 
   return "Novo Doador";

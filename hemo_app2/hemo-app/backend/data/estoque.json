@@ -3,8 +3,8 @@
   "O-": "Critico",
   "A+": "Critico",
   "A-": "Alerta",
-  "B+": "Adequado",
-  "B-": "Alerta",
+  "B+": "Alerta",
+  "B-": "Critico",
   "AB+": "Estavel",
   "AB-": "Adequado"
 }

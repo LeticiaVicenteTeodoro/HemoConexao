@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,14 +20,14 @@ import estadosCidades from "./cidadeseestados.json";
 
 const API_URL = "http://192.168.1.20:8000";
 
+
 function obterSelo(total) {
-  if (total >= 100) return "❤️ Herói da Vida";
-  if (total >= 75) return "💎 Lenda Solidária";
-  if (total >= 50) return "🥇 Doador Ouro";
-  if (total >= 35) return "🏆 Doador Experiente";
-  if (total >= 25) return "🥈 Doador Prata";
-  if (total >= 15) return "⭐ Doador Frequente";
-  if (total >= 5) return "🥉 Doador Iniciante";
+  if (total >= 25) return "❤️ Herói da Vida";
+  if (total >= 20) return "💎 Lenda Solidária";
+  if (total >= 15) return "🥇 Doador Ouro";
+  if (total >= 10) return "🏆 Doador Experiente";
+  if (total >= 5) return "🥈 Doador Prata";
+  if (total >= 3) return "⭐ Doador Frequente";
 
   return "🌱 Primeira Doação";
 }
@@ -45,11 +45,79 @@ export default function Registrar() {
   const [cidade, setCidade] = useState("");
   const [tipo, setTipo] = useState("");
   const [obs, setObs] = useState("");
+  const [bloqueado, setBloqueado] = useState(false);
+  const [diasRestantes, setDiasRestantes] = useState(0);
 
   const estados = Object.keys(estadosCidades);
   const cidades = estado
     ? estadosCidades[estado]
     : [];
+
+    const verificarDoacao = async () => {
+  try {
+    const usuarioSalvo = await AsyncStorage.getItem("usuario");
+
+    if (!usuarioSalvo) return;
+
+    const usuario = JSON.parse(usuarioSalvo);
+
+    const response = await fetch(
+      `${API_URL}/historico/${usuario.id}`
+    );
+
+    const historico = await response.json();
+
+    // Nunca doou
+    if (!historico || historico.length === 0) {
+      return;
+    }
+
+    // A primeira posição é a última doação
+    const ultimaDoacao = historico[0];
+
+    const partes = ultimaDoacao.data.split("/");
+
+    const dataUltima = new Date(
+      partes[2],
+      partes[1] - 1,
+      partes[0]
+    );
+
+    // Masculino: 60 dias
+    // Feminino: 90 dias
+    const intervalo =
+      usuario.sexo === "Masculino" ? 60 : 90;
+
+    const proximaDoacao = new Date(dataUltima);
+
+    proximaDoacao.setDate(
+      proximaDoacao.getDate() + intervalo
+    );
+
+    const hoje = new Date();
+
+    const diferenca =
+      proximaDoacao.getTime() - hoje.getTime();
+
+    const dias = Math.ceil(
+      diferenca / (1000 * 60 * 60 * 24)
+    );
+
+    if (dias > 0) {
+      setBloqueado(true);
+      setDiasRestantes(dias);
+    }
+
+  } catch (error) {
+    console.log("Erro ao verificar doação:", error);
+  }
+};
+
+
+useEffect(() => {
+  verificarDoacao();
+}, []);
+
 
   const salvar = async () => {
 
@@ -157,6 +225,36 @@ const dataFormatada = formatarData(data);
       );
     }
   };
+
+if (bloqueado) {
+  return (
+    <View style={styles.bloqueadoContainer}>
+      <Text style={styles.bloqueadoIcon}>
+        🩸
+      </Text>
+
+      <Text style={styles.bloqueadoTitulo}>
+        Ainda não está na hora
+      </Text>
+
+      <Text style={styles.bloqueadoTexto}>
+        Você ainda precisa aguardar{" "}
+        <Text style={styles.destaque}>
+          {diasRestantes} dias
+        </Text>{" "}
+        para registrar uma nova doação.
+      </Text>
+<TouchableOpacity
+  style={styles.button}
+  onPress={() => router.back()}
+>
+  <Text style={styles.buttonText}>
+    Voltar para a Home
+  </Text>
+</TouchableOpacity>
+    </View>
+  );
+}
 
   return (
     <View style={styles.container}>
@@ -379,4 +477,38 @@ placeholderText: {
     fontWeight: "bold",
     fontSize: 16,
   },
+
+  bloqueadoContainer: {
+  flex: 1,
+  padding: 25,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "#fff",
+},
+
+bloqueadoIcon: {
+  fontSize: 60,
+  marginBottom: 15,
+},
+
+bloqueadoTitulo: {
+  fontSize: 25,
+  fontWeight: "bold",
+  color: "#E30613",
+  marginBottom: 15,
+  textAlign: "center",
+},
+
+bloqueadoTexto: {
+  fontSize: 16,
+  color: "#555",
+  textAlign: "center",
+  lineHeight: 24,
+  marginBottom: 25,
+},
+
+destaque: {
+  color: "#E30613",
+  fontWeight: "bold",
+},
 });
