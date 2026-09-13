@@ -191,7 +191,7 @@ useEffect(() => {
         <Item
           icon="calendar"
           text="Agendar"
-          link="https://www.mg.gov.br/agendamento_servico/doacao-de-sangue"
+          onPress={() => router.push("/agendar")}
         />
 
         <Item
