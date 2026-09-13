@@ -134,8 +134,9 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#E30613",
+    backgroundColor: "#fff",
     borderRadius: 25,
+    borderColor: "#E30613",
     padding: 25,
     alignItems: "center",
     marginBottom: 25,
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    color: "#fff",
+    color: "#E30613",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
@@ -155,21 +156,21 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: "#fff",
+    color: "#E30613",
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
   },
 
   subtitle: {
-    color: "#fff",
+    color: "#555",
     fontSize: 15,
     textAlign: "center",
     marginVertical: 10,
   },
 
   infoBox: {
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f8f8",
     width: "100%",
     borderRadius: 18,
     padding: 15,
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    color: "#fff",
+    color: "#E30613",
     marginTop: 18,
     fontWeight: "bold",
   },
