@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -26,14 +27,17 @@ export default function Index() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/login?email=${encodeURIComponent(
-          email
-        )}&senha=${encodeURIComponent(password)}`,
-        {
-          method: "POST",
-        }
-      );
+      const url = `${API_URL}/login?email=${encodeURIComponent(
+        email
+      )}&senha=${encodeURIComponent(password)}`;
+
+      console.log("TENTANDO CONECTAR:", url);
+
+      const response = await fetch(url, {
+        method: "POST",
+      });
+
+      console.log("STATUS:", response.status);
 
       const data = await response.json();
 
@@ -55,11 +59,11 @@ export default function Index() {
 
       router.replace("/Home");
     } catch (error) {
-      console.log(error);
+      console.log("ERRO LOGIN:", error);
 
       Alert.alert(
-        "Erro",
-        "Não foi possível conectar ao servidor."
+        "Erro de conexão",
+        `Não foi possível conectar ao servidor.\n\n${String(error)}`
       );
     } finally {
       setLoading(false);
@@ -168,3 +172,4 @@ const styles = StyleSheet.create({
     color: "#777",
   },
 });
+

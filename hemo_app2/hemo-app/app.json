@@ -9,9 +9,11 @@
     "scheme": "hemoapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
@@ -24,12 +26,15 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.hemoapp"
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+
     "plugins": [
       "expo-router",
+
       [
         "expo-splash-screen",
         {
@@ -42,15 +47,27 @@
           }
         }
       ],
+
       "expo-web-browser",
       "expo-sqlite",
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+
     "extra": {
       "router": {},
       "eas": {
