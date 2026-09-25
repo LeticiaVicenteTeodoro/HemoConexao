@@ -1,10 +1,10 @@
 {
   "O+": "Critico",
   "O-": "Critico",
-  "A+": "Critico",
+  "A+": "Alerta",
   "A-": "Alerta",
   "B+": "Alerta",
-  "B-": "Critico",
+  "B-": "Alerta",
   "AB+": "Estavel",
-  "AB-": "Adequado"
+  "AB-": "Alerta"
 }

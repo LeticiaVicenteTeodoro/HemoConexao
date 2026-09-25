@@ -14,6 +14,9 @@ TIPOS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"]
 def coletar_dados():
     options = Options()
     options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
 
     driver = webdriver.Chrome(options=options)
 

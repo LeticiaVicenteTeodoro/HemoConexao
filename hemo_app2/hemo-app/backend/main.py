@@ -420,6 +420,34 @@ def verificar_tipos_com_estoque_baixo():
         print("ERRO ESTOQUE:", e)
         return []
 
+@app.get("/estoque")
+def estoque():
+    try:
+        subprocess.run(
+            ["python", "scraper.py"],
+            check=True
+        )
+
+        arquivo = Path("data/estoque.json")
+
+        if not arquivo.exists():
+            return {
+                "sucesso": False,
+                "mensagem": "Arquivo de estoque não encontrado"
+            }
+
+        with open(arquivo, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+
+        return dados
+
+    except Exception as e:
+        print("ERRO ESTOQUE:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
 @app.post("/notificar_estoque_baixo")
 def notificar_estoque_baixo():
     conn = None
