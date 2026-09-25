@@ -18,8 +18,7 @@ import { agendarNotificacaoProximaDoacao } from "./notificacoes";
 
 import estadosCidades from "./cidadeseestados.json";
 
-const API_URL = "http://192.168.1.20:8000";
-
+const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
 
 function obterSelo(total) {
   if (total >= 25) return "❤️ Herói da Vida";

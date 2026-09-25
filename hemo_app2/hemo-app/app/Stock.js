@@ -21,7 +21,7 @@ export default function Stock() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://192.168.1.20:8000/estoque")
+    fetch("https://hemo-backend-683937879829.us-central1.run.app/estoque")
       .then((res) => {
         console.log("STATUS HTTP:", res.status);
         return res.json();

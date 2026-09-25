@@ -1,3 +1,6 @@
-selenium
 fastapi
 uvicorn
+selenium
+resend
+requests
+python-dotenv

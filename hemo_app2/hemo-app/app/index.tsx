@@ -11,7 +11,7 @@ import {
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "http://192.168.1.20:8000";
+const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
 
 export default function Index() {
   const [email, setEmail] = useState("");

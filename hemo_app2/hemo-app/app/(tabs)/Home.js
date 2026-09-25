@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-const API_URL = "http://192.168.1.20:8000";
+const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
 
 const MARCOS = [1, 3, 5, 10, 15, 20, 25];
 
