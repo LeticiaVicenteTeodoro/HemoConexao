@@ -4,3 +4,4 @@ selenium
 resend
 requests
 python-dotenv
+firebase-admin

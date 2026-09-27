@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -9,6 +10,8 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../../firebaseConfig";
+import { signOut } from "firebase/auth";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 
@@ -54,20 +57,29 @@ export default function Profile() {
 
   async function loadUser() {
     try {
-      const usuarioSalvo = await AsyncStorage.getItem("usuario");
+      const firebaseUser = auth.currentUser;
 
-      if (!usuarioSalvo) {
+      if (!firebaseUser) {
         router.replace("/");
         return;
       }
 
-      const usuario = JSON.parse(usuarioSalvo);
+      const responseUsuario = await fetch(
+        `${API_URL}/usuario/firebase/${firebaseUser.uid}`
+      );
 
-      const response = await fetch(
+      const usuario = await responseUsuario.json();
+
+      if (!responseUsuario.ok || !usuario.sucesso) {
+        console.log("Usuário não encontrado no backend.");
+        return;
+      }
+
+      const responseHistorico = await fetch(
         `${API_URL}/historico/${usuario.id}`
       );
 
-      const historico = await response.json();
+      const historico = await responseHistorico.json();
 
       const fotoSalva = await AsyncStorage.getItem("foto_perfil");
 
@@ -110,7 +122,8 @@ export default function Profile() {
 
   async function handleLogout() {
     try {
-      await AsyncStorage.removeItem("usuario");
+      await signOut(auth);
+
       await AsyncStorage.removeItem("foto_perfil");
       await AsyncStorage.removeItem("onboarding_done");
 

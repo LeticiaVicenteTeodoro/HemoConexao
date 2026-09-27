@@ -8,7 +8,8 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../firebaseConfig";
+
 
 const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
 
@@ -22,28 +23,56 @@ export default function Historico() {
   }, []);
 
   const carregar = async () => {
-    try {
-      const usuarioSalvo = await AsyncStorage.getItem("usuario");
+  try {
+    const user = auth.currentUser;
 
-      if (!usuarioSalvo) {
-        Alert.alert("Erro", "Usuário não encontrado.");
-        return;
-      }
 
-      const usuario = JSON.parse(usuarioSalvo);
-
-      const response = await fetch(
-        `${API_URL}/historico/${usuario.id}`
-      );
-
-      const resultado = await response.json();
-
-      setDados(resultado);
-    } catch (error) {
-      console.log(error);
-      Alert.alert("Erro", "Não foi possível carregar o histórico.");
+console.log("FIREBASE USER:", user);
+console.log("FIREBASE UID:", user?.uid);
+    if (!user) {
+      Alert.alert("Erro", "Usuário não está autenticado.");
+      return;
     }
-  };
+
+
+    
+    const responseUsuario = await fetch(
+      `${API_URL}/usuario/firebase/${user.uid}`
+    );
+
+    const usuario = await responseUsuario.json();
+    console.log("RESPOSTA BACKEND USUARIO:", usuario);
+
+    if (!responseUsuario.ok || !usuario.sucesso) {
+      Alert.alert(
+        "Erro",
+        usuario.mensagem || "Usuário não encontrado."
+      );
+      return;
+    }
+
+    const responseHistorico = await fetch(
+      `${API_URL}/historico/${usuario.id}`
+    );
+
+    const resultado = await responseHistorico.json();
+
+    if (!responseHistorico.ok) {
+      Alert.alert("Erro", "Não foi possível carregar o histórico.");
+      return;
+    }
+
+    setDados(resultado);
+  } catch (error) {
+    console.log("ERRO HISTÓRICO:", error);
+
+    Alert.alert(
+      "Erro",
+      "Não foi possível carregar o histórico."
+    );
+  }
+};
+
 
   const excluir = (id) => {
     Alert.alert(

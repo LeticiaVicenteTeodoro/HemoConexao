@@ -11,8 +11,7 @@ import {
 
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { auth } from "../firebaseConfig";import { router } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { agendarNotificacaoProximaDoacao } from "./notificacoes";
 
@@ -35,6 +34,26 @@ function formatarData(data) {
   return data.toLocaleDateString("pt-BR");
 }
 
+const buscarUsuario = async () => {
+  const user = auth.currentUser;
+
+  if (!user) {
+    return null;
+  }
+
+  const response = await fetch(
+    `${API_URL}/usuario/firebase/${user.uid}`
+  );
+
+  const usuario = await response.json();
+
+  if (!response.ok || !usuario.sucesso) {
+    return null;
+  }
+
+  return usuario;
+};
+
 export default function Registrar() {
   const navigation = useNavigation();
 
@@ -52,13 +71,15 @@ export default function Registrar() {
     ? estadosCidades[estado]
     : [];
 
+   
     const verificarDoacao = async () => {
   try {
-    const usuarioSalvo = await AsyncStorage.getItem("usuario");
+    const usuario = await buscarUsuario();
 
-    if (!usuarioSalvo) return;
-
-    const usuario = JSON.parse(usuarioSalvo);
+    if (!usuario) {
+      console.log("Usuário Firebase não encontrado.");
+      return;
+    }
 
     const response = await fetch(
       `${API_URL}/historico/${usuario.id}`
@@ -66,12 +87,10 @@ export default function Registrar() {
 
     const historico = await response.json();
 
-    // Nunca doou
     if (!historico || historico.length === 0) {
       return;
     }
 
-    // A primeira posição é a última doação
     const ultimaDoacao = historico[0];
 
     const partes = ultimaDoacao.data.split("/");
@@ -82,10 +101,10 @@ export default function Registrar() {
       partes[0]
     );
 
-    // Masculino: 60 dias
-    // Feminino: 90 dias
-    const intervalo =
-      usuario.sexo === "Masculino" ? 60 : 90;
+    // Temporariamente mantém a regra atual.
+    // Depois podemos ajustar sexo quando esse dado
+    // também estiver sendo salvo no Firebase/backend.
+    const intervalo = 90;
 
     const proximaDoacao = new Date(dataUltima);
 
@@ -106,12 +125,10 @@ export default function Registrar() {
       setBloqueado(true);
       setDiasRestantes(dias);
     }
-
   } catch (error) {
     console.log("Erro ao verificar doação:", error);
   }
 };
-
 
 useEffect(() => {
   verificarDoacao();
@@ -137,21 +154,15 @@ useEffect(() => {
 const dataFormatada = formatarData(data);
 
     try {
-      const usuarioSalvo =
-        await AsyncStorage.getItem(
-          "usuario"
-        );
+      const usuario = await buscarUsuario();
 
-      if (!usuarioSalvo) {
-        Alert.alert(
-          "Erro",
-          "Usuário não encontrado."
-        );
-        return;
-      }
-
-      const usuario =
-        JSON.parse(usuarioSalvo);
+if (!usuario) {
+  Alert.alert(
+    "Erro",
+    "Usuário não encontrado."
+  );
+  return;
+}
 
       const response = await fetch(
         `${API_URL}/doacao?usuario_id=${usuario.id}&data=${encodeURIComponent(

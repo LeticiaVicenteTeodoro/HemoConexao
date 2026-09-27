@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -9,14 +8,14 @@ import {
   Alert,
 } from "react-native";
 import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
+import { auth } from "../firebaseConfig";
 
 export default function Index() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -27,44 +26,54 @@ export default function Index() {
     try {
       setLoading(true);
 
-      const url = `${API_URL}/login?email=${encodeURIComponent(
-        email
-      )}&senha=${encodeURIComponent(password)}`;
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
 
-      console.log("TENTANDO CONECTAR:", url);
+      const user = userCredential.user;
 
-      const response = await fetch(url, {
-        method: "POST",
-      });
+      if (!user.emailVerified) {
+        Alert.alert(
+          "Email não confirmado",
+          "Confirme seu email antes de entrar no aplicativo."
+        );
 
-      console.log("STATUS:", response.status);
+        router.push({
+          pathname: "/confirmar",
+          params: {
+            email: user.email ?? email,
+          },
+        });
 
-      const data = await response.json();
-
-      if (!data.sucesso) {
-        Alert.alert("Erro", "Email ou senha inválidos.");
         return;
       }
 
-      await AsyncStorage.setItem(
-        "usuario",
-        JSON.stringify({
-          id: data.id,
-          nome: data.nome,
-          email: data.email,
-        })
-      );
-
-      Alert.alert("Sucesso", `Bem-vindo(a), ${data.nome}!`);
+      Alert.alert("Sucesso", "Login realizado com sucesso!");
 
       router.replace("/Home");
     } catch (error) {
-      console.log("ERRO LOGIN:", error);
+      console.log("ERRO LOGIN FIREBASE:", error);
 
-      Alert.alert(
-        "Erro de conexão",
-        `Não foi possível conectar ao servidor.\n\n${String(error)}`
-      );
+      let mensagem = "Não foi possível fazer login.";
+
+      if (error instanceof FirebaseError) {
+        if (
+          error.code === "auth/invalid-credential" ||
+          error.code === "auth/wrong-password" ||
+          error.code === "auth/user-not-found"
+        ) {
+          mensagem = "Email ou senha inválidos.";
+        } else if (error.code === "auth/invalid-email") {
+          mensagem = "Digite um email válido.";
+        } else if (error.code === "auth/too-many-requests") {
+          mensagem =
+            "Muitas tentativas. Tente novamente mais tarde.";
+        }
+      }
+
+      Alert.alert("Erro", mensagem);
     } finally {
       setLoading(false);
     }
@@ -172,4 +181,3 @@ const styles = StyleSheet.create({
     color: "#777",
   },
 });
-

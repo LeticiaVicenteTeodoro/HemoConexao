@@ -8,10 +8,18 @@ from dotenv import load_dotenv
 import json
 from pathlib import Path
 import subprocess
+import firebase_admin
+from firebase_admin import credentials, auth
+from pydantic import BaseModel
 
 load_dotenv()
 
 app = FastAPI()
+
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(  options={
+            "projectId": "hemo-conexao"
+        })
 
 DB_PATH = "banco.db"
 
@@ -69,7 +77,17 @@ def init_db():
         pass
 
     try:
+        cur.execute("ALTER TABLE usuarios ADD COLUMN sexo TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
         cur.execute("ALTER TABLE usuarios ADD COLUMN tipo_sanguineo TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cur.execute("ALTER TABLE usuarios ADD COLUMN firebase_uid TEXT")
     except sqlite3.OperationalError:
         pass
 
@@ -104,6 +122,318 @@ init_db()
 @app.get("/")
 def home():
     return {"status": "ok"}
+
+def verificar_token_firebase(id_token: str):
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        return decoded_token
+    except Exception as e:
+        print("ERRO TOKEN FIREBASE:", e)
+        return None
+    
+
+class UsuarioFirebase(BaseModel):
+    id_token: str
+    nome: str
+    tipo_sanguineo: str = ""
+    sexo: str = ""
+
+
+@app.post("/usuario/firebase")
+def salvar_usuario_firebase(dados: UsuarioFirebase):
+    conn = None
+
+    try:
+        decoded_token = verificar_token_firebase(dados.id_token)
+
+        if not decoded_token:
+            return {
+                "sucesso": False,
+                "mensagem": "Token Firebase inválido."
+            }
+
+        firebase_uid = decoded_token["uid"]
+        email = decoded_token.get("email", "")
+        nome = dados.nome
+        tipo_sanguineo = dados.tipo_sanguineo
+        sexo = dados.sexo
+
+        conn = conectar()
+        cur = conn.cursor()
+
+        # Verifica se o usuário já existe pelo Firebase UID
+        cur.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE firebase_uid = ?
+            """,
+            (firebase_uid,)
+        )
+
+        usuario = cur.fetchone()
+
+        if usuario:
+            cur.execute(
+                """
+                UPDATE usuarios
+                SET nome = ?,
+                    email = ?,
+                    tipo_sanguineo = ?,
+                    sexo = ?
+                WHERE firebase_uid = ?
+                """,
+                (
+                    nome,
+                    email,
+                    tipo_sanguineo,
+                    firebase_uid,
+                    sexo
+                )
+            )
+
+            conn.commit()
+
+            return {
+                "sucesso": True,
+                "mensagem": "Usuário atualizado.",
+                "id": usuario[0],
+                "firebase_uid": firebase_uid
+            }
+
+        # Cria o usuário no SQLite
+        cur.execute(
+            """
+            INSERT INTO usuarios
+            (nome, email, tipo_sanguineo, sexo, firebase_uid, validado)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                nome,
+                email,
+                tipo_sanguineo,
+                sexo,
+                firebase_uid,
+                1
+            )
+        )
+
+        conn.commit()
+
+        usuario_id = cur.lastrowid
+
+        return {
+            "sucesso": True,
+            "mensagem": "Usuário salvo com sucesso.",
+            "id": usuario_id,
+            "firebase_uid": firebase_uid
+        }
+
+    except Exception as e:
+        print("ERRO USUARIO FIREBASE:", e)
+
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/usuario/firebase/{firebase_uid}")
+def buscar_usuario_firebase(firebase_uid: str):
+    conn = None
+
+    try:
+        conn = conectar()
+        cur = conn.cursor()
+
+        # 1. Primeiro procura pelo Firebase UID
+        cur.execute(
+            """
+            SELECT id, nome, email, tipo_sanguineo, sexo
+            FROM usuarios
+            WHERE firebase_uid = ?
+            """,
+            (firebase_uid,)
+        )
+
+        usuario = cur.fetchone()
+
+        if usuario:
+            return {
+                "sucesso": True,
+                "id": usuario[0],
+                "nome": usuario[1],
+                "email": usuario[2],
+                "tipo_sanguineo": usuario[3] or "",
+                "sexo": usuario[4] or ""
+            }
+
+        # 2. Se não encontrou, busca o usuário no Firebase
+        try:
+            firebase_user = auth.get_user(firebase_uid)
+        except Exception as e:
+            print("ERRO AO BUSCAR USUARIO NO FIREBASE:", e)
+
+            return {
+                "sucesso": False,
+                "mensagem": "Usuário não encontrado no Firebase."
+            }
+
+        email = firebase_user.email or ""
+        nome = firebase_user.display_name or ""
+
+        # 3. Verifica se já existe usuário com esse e-mail
+        cur.execute(
+            """
+            SELECT id, nome, email, tipo_sanguineo, sexo
+            FROM usuarios
+            WHERE email = ?
+            """,
+            (email,)
+        )
+
+        usuario_email = cur.fetchone()
+
+        if usuario_email:
+            # Usuário antigo existe, mas ainda não estava vinculado
+            # ao Firebase UID. Fazemos a vinculação.
+            cur.execute(
+                """
+                UPDATE usuarios
+                SET firebase_uid = ?
+                WHERE id = ?
+                """,
+                (firebase_uid, usuario_email[0])
+            )
+
+            conn.commit()
+
+            print(
+                "USUÁRIO EXISTENTE VINCULADO AO FIREBASE:",
+                firebase_uid,
+                email
+            )
+
+            return {
+                "sucesso": True,
+                "id": usuario_email[0],
+                "nome": usuario_email[1],
+                "email": usuario_email[2],
+                "tipo_sanguineo": usuario_email[3] or "",
+                "sexo": usuario_email[4] or ""
+            }
+
+        # 4. Se realmente não existe, cria um novo usuário
+        cur.execute(
+            """
+            INSERT INTO usuarios
+            (nome, email, tipo_sanguineo, sexo, firebase_uid, validado)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                nome,
+                email,
+                "",
+                "",
+                firebase_uid,
+                1
+            )
+        )
+
+        conn.commit()
+
+        usuario_id = cur.lastrowid
+
+        print(
+            "USUÁRIO FIREBASE SINCRONIZADO:",
+            firebase_uid,
+            email
+        )
+
+        return {
+            "sucesso": True,
+            "id": usuario_id,
+            "nome": nome,
+            "email": email,
+            "tipo_sanguineo": "",
+            "sexo": ""
+        }
+
+    except Exception as e:
+        print(
+            "ERRO BUSCAR/SINCRONIZAR USUARIO FIREBASE:",
+            e
+        )
+
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+class UsuarioAtualizacao(BaseModel):
+    nome: str
+    tipo_sanguineo: str = ""
+    sexo: str = ""
+
+@app.put("/usuario/firebase/{firebase_uid}")
+def atualizar_usuario_firebase(
+    firebase_uid: str,
+    dados: UsuarioAtualizacao
+):
+    conn = None
+
+    try:
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            UPDATE usuarios
+            SET nome = ?,
+                tipo_sanguineo = ?,
+                sexo = ?
+            WHERE firebase_uid = ?
+            """,
+            (
+                dados.nome,
+                dados.tipo_sanguineo,
+                dados.sexo,
+                firebase_uid
+            )
+        )
+
+        if cur.rowcount == 0:
+            return {
+                "sucesso": False,
+                "mensagem": "Usuário não encontrado."
+            }
+
+        conn.commit()
+
+        return {
+            "sucesso": True,
+            "mensagem": "Perfil atualizado com sucesso."
+        }
+
+    except Exception as e:
+        print("ERRO ATUALIZAR USUARIO FIREBASE:", e)
+
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.post("/cadastro")
 def cadastro(nome: str, email: str, senha: str, tipo_sanguineo: str = ""):

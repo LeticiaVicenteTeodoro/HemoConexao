@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -9,9 +10,14 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
-
-const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
+const API_URL =
+  "https://hemo-backend-683937879829.us-central1.run.app";
 
 export default function Cadastro() {
   const [nome, setNome] = useState("");
@@ -29,41 +35,75 @@ export default function Cadastro() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/cadastro?nome=${encodeURIComponent(
-          nome
-        )}&email=${encodeURIComponent(
-          email
-        )}&senha=${encodeURIComponent(
-          senha)}
-        )}&tipo_sanguineo=${encodeURIComponent(tipo)}`,
-        {
-          method: "POST",
-        }
+      // 1. Cria o usuário no Firebase
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        senha
       );
+
+      const user = userCredential.user;
+
+      // 2. Pega o ID Token do Firebase
+      const idToken = await user.getIdToken();
+
+      // 3. Salva nome + tipo sanguíneo + UID no backend
+      const response = await fetch(
+  `${API_URL}/usuario/firebase`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id_token: idToken,
+      nome: nome,
+      tipo_sanguineo: tipo,
+    }),
+  }
+);
 
       const data = await response.json();
 
-      if (!data.sucesso) {
-        Alert.alert("Erro", data.mensagem || data.erro || "Erro ao cadastrar.");
+      console.log("RESPOSTA BACKEND:", data);
+
+      if (!response.ok || !data.sucesso) {
+        Alert.alert(
+          "Erro",
+          data.mensagem || "Não foi possível salvar os dados do usuário."
+        );
         return;
       }
 
+      // 4. Envia o email de confirmação pelo Firebase
+      await sendEmailVerification(user);
+
+      // 5. Vai para a tela de confirmação
       Alert.alert(
         "Cadastro realizado",
-        "Enviamos um código de confirmação para seu email."
+        "Enviamos um link de confirmação para seu email."
       );
 
       router.push({
         pathname: "/confirmar",
         params: {
-          email: email,
+          email: email.trim(),
         },
       });
     } catch (error) {
-      console.log(error);
+      console.log("ERRO FIREBASE/BACKEND:", error);
 
-      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
+      let mensagem = "Não foi possível criar a conta.";
+
+      if (error.code === "auth/email-already-in-use") {
+        mensagem = "Este email já está cadastrado.";
+      } else if (error.code === "auth/invalid-email") {
+        mensagem = "Digite um email válido.";
+      } else if (error.code === "auth/weak-password") {
+        mensagem = "A senha precisa ter pelo menos 6 caracteres.";
+      }
+
+      Alert.alert("Erro", mensagem);
     } finally {
       setLoading(false);
     }
@@ -98,21 +138,24 @@ export default function Cadastro() {
       />
 
       <View style={styles.pickerContainer}>
-  <Picker
-    selectedValue={tipo}
-    onValueChange={(value) => setTipo(value)}
-  >
-    <Picker.Item label="Tipo sanguíneo (opcional)" value="" />
-    <Picker.Item label="A+" value="A+" />
-    <Picker.Item label="A-" value="A-" />
-    <Picker.Item label="B+" value="B+" />
-    <Picker.Item label="B-" value="B-" />
-    <Picker.Item label="AB+" value="AB+" />
-    <Picker.Item label="AB-" value="AB-" />
-    <Picker.Item label="O+" value="O+" />
-    <Picker.Item label="O-" value="O-" />
-  </Picker>
-</View>
+        <Picker
+          selectedValue={tipo}
+          onValueChange={(value) => setTipo(value)}
+        >
+          <Picker.Item
+            label="Tipo sanguíneo (opcional)"
+            value=""
+          />
+          <Picker.Item label="A+" value="A+" />
+          <Picker.Item label="A-" value="A-" />
+          <Picker.Item label="B+" value="B+" />
+          <Picker.Item label="B-" value="B-" />
+          <Picker.Item label="AB+" value="AB+" />
+          <Picker.Item label="AB-" value="AB-" />
+          <Picker.Item label="O+" value="O+" />
+          <Picker.Item label="O-" value="O-" />
+        </Picker>
+      </View>
 
       <TouchableOpacity
         style={styles.button}
@@ -125,7 +168,9 @@ export default function Cadastro() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.back()}>
-        <Text style={styles.link}>Já possui conta? Entrar</Text>
+        <Text style={styles.link}>
+          Já possui conta? Entrar
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -161,13 +206,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
+
   pickerContainer: {
-  borderWidth: 1,
-  borderColor: "#ddd",
-  borderRadius: 10,
-  marginBottom: 15,
-  backgroundColor: "#fff",
-},
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    marginBottom: 15,
+    backgroundColor: "#fff",
+  },
 
   buttonText: {
     color: "#fff",

@@ -1,53 +1,57 @@
+
 import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-
-const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
+import { reload } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 export default function Confirmar() {
   const { email } = useLocalSearchParams();
-
-  const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const confirmar = async () => {
-    if (!codigo) {
-      Alert.alert("Erro", "Digite o código de confirmação.");
-      return;
-    }
-
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/confirmar?email=${encodeURIComponent(
-          email
-        )}&token=${encodeURIComponent(codigo)}`,
-        {
-          method: "POST",
-        }
-      );
+      const user = auth.currentUser;
 
-      const data = await response.json();
-
-      if (!data.sucesso) {
-        Alert.alert("Erro", data.mensagem || "Token inválido.");
+      if (!user) {
+        Alert.alert(
+          "Erro",
+          "Não encontramos sua conta. Faça o cadastro novamente."
+        );
         return;
       }
 
-      Alert.alert("Sucesso", "Email confirmado com sucesso!");
+      // Atualiza os dados do usuário vindos do Firebase
+      await reload(user);
 
-      router.replace("/");
+      if (auth.currentUser?.emailVerified) {
+        Alert.alert(
+          "Sucesso",
+          "Email confirmado com sucesso!"
+        );
+
+        router.replace("/");
+      } else {
+        Alert.alert(
+          "Email ainda não confirmado",
+          "Clique no link enviado para seu email e depois tente novamente."
+        );
+      }
     } catch (error) {
-      console.log(error);
-      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
+      console.log("ERRO AO CONFIRMAR:", error);
+
+      Alert.alert(
+        "Erro",
+        "Não foi possível verificar a confirmação do email."
+      );
     } finally {
       setLoading(false);
     }
@@ -58,18 +62,15 @@ export default function Confirmar() {
       <Text style={styles.title}>Confirmar Email</Text>
 
       <Text style={styles.subtitle}>
-        Digite o código enviado para:
+        Enviamos um link de confirmação para:
       </Text>
 
       <Text style={styles.email}>{email}</Text>
 
-      <TextInput
-        placeholder="Código de confirmação"
-        value={codigo}
-        onChangeText={setCodigo}
-        keyboardType="numeric"
-        style={styles.input}
-      />
+      <Text style={styles.instruction}>
+        Abra seu email, clique no link de confirmação e depois
+        volte para o aplicativo.
+      </Text>
 
       <TouchableOpacity
         style={styles.button}
@@ -77,7 +78,7 @@ export default function Confirmar() {
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? "Confirmando..." : "Confirmar"}
+          {loading ? "Verificando..." : "Já confirmei meu email"}
         </Text>
       </TouchableOpacity>
 
@@ -112,15 +113,15 @@ const styles = StyleSheet.create({
   email: {
     textAlign: "center",
     fontWeight: "bold",
+    marginTop: 5,
     marginBottom: 20,
   },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 15,
+  instruction: {
+    textAlign: "center",
+    color: "#555",
+    lineHeight: 22,
+    marginBottom: 25,
   },
 
   button: {

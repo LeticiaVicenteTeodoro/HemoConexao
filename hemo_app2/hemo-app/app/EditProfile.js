@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -10,7 +11,10 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../firebaseConfig";
+
+const API_URL =
+  "https://hemo-backend-683937879829.us-central1.run.app";
 
 export default function EditProfile() {
   const [loading, setLoading] = useState(true);
@@ -27,18 +31,38 @@ export default function EditProfile() {
 
   async function loadUser() {
     try {
-      const data = await AsyncStorage.getItem("usuario");
+      const firebaseUser = auth.currentUser;
 
-      if (data) {
-        const parsed = JSON.parse(data);
-
-        setUser(parsed);
-        setName(parsed.nome || "");
-        setBloodType(parsed.tipo_sanguineo || "");
-        setGender(parsed.sexo || "");
+      if (!firebaseUser) {
+        router.replace("/");
+        return;
       }
+
+      const response = await fetch(
+        `${API_URL}/usuario/firebase/${firebaseUser.uid}`
+      );
+
+      const usuario = await response.json();
+
+      if (!response.ok || !usuario.sucesso) {
+        Alert.alert(
+          "Erro",
+          "Não foi possível encontrar seus dados."
+        );
+        return;
+      }
+
+      setUser(usuario);
+      setName(usuario.nome || "");
+      setBloodType(usuario.tipo_sanguineo || "");
+      setGender(usuario.sexo || "");
     } catch (err) {
       console.log("Erro ao carregar:", err);
+
+      Alert.alert(
+        "Erro",
+        "Não foi possível carregar seus dados."
+      );
     } finally {
       setLoading(false);
     }
@@ -46,23 +70,55 @@ export default function EditProfile() {
 
   async function handleSave() {
     try {
-      const updatedUser = {
-        ...user,
-        nome: name,
-        tipo_sanguineo: bloodType,
-        sexo: gender,
-      };
+      const firebaseUser = auth.currentUser;
 
-      await AsyncStorage.setItem(
-        "usuario",
-        JSON.stringify(updatedUser)
+      if (!firebaseUser) {
+        Alert.alert(
+          "Erro",
+          "Usuário não está autenticado."
+        );
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/usuario/firebase/${firebaseUser.uid}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nome: name,
+            tipo_sanguineo: bloodType,
+            sexo: gender,
+          }),
+        }
       );
 
-      Alert.alert("Sucesso", "Perfil atualizado com sucesso!");
+      const resultado = await response.json();
+
+      if (!response.ok || !resultado.sucesso) {
+        Alert.alert(
+          "Erro",
+          resultado.mensagem ||
+            "Não foi possível salvar as alterações."
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Sucesso",
+        "Perfil atualizado com sucesso!"
+      );
+
       router.back();
     } catch (err) {
       console.log("Erro ao salvar:", err);
-      Alert.alert("Erro", "Não foi possível salvar");
+
+      Alert.alert(
+        "Erro",
+        "Não foi possível salvar."
+      );
     }
   }
 
@@ -76,13 +132,25 @@ export default function EditProfile() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#E30613" />
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        <Ionicons
+          name="arrow-back"
+          size={24}
+          color="#E30613"
+        />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Editar Perfil</Text>
+      <Text style={styles.title}>
+        Editar Perfil
+      </Text>
 
-      <Text style={styles.label}>Nome</Text>
+      <Text style={styles.label}>
+        Nome
+      </Text>
+
       <TextInput
         style={styles.input}
         value={name}
@@ -90,7 +158,10 @@ export default function EditProfile() {
         placeholder="Digite seu nome"
       />
 
-      <Text style={styles.label}>Tipo Sanguíneo</Text>
+      <Text style={styles.label}>
+        Tipo Sanguíneo
+      </Text>
+
       <TextInput
         style={styles.input}
         value={bloodType}
@@ -98,20 +169,26 @@ export default function EditProfile() {
         placeholder="Ex: O+"
       />
 
-      <Text style={styles.label}>Sexo</Text>
+      <Text style={styles.label}>
+        Sexo
+      </Text>
 
       <View style={styles.genderContainer}>
         <TouchableOpacity
           style={[
             styles.genderButton,
-            gender === "Feminino" && styles.genderSelected,
+            gender === "Feminino" &&
+              styles.genderSelected,
           ]}
-          onPress={() => setGender("Feminino")}
+          onPress={() =>
+            setGender("Feminino")
+          }
         >
           <Text
             style={[
               styles.genderText,
-              gender === "Feminino" && styles.genderTextSelected,
+              gender === "Feminino" &&
+                styles.genderTextSelected,
             ]}
           >
             Feminino
@@ -121,14 +198,18 @@ export default function EditProfile() {
         <TouchableOpacity
           style={[
             styles.genderButton,
-            gender === "Masculino" && styles.genderSelected,
+            gender === "Masculino" &&
+              styles.genderSelected,
           ]}
-          onPress={() => setGender("Masculino")}
+          onPress={() =>
+            setGender("Masculino")
+          }
         >
           <Text
             style={[
               styles.genderText,
-              gender === "Masculino" && styles.genderTextSelected,
+              gender === "Masculino" &&
+                styles.genderTextSelected,
             ]}
           >
             Masculino
@@ -136,8 +217,13 @@ export default function EditProfile() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={handleSave}
+      >
+        <Text style={styles.saveButtonText}>
+          Salvar Alterações
+        </Text>
       </TouchableOpacity>
     </View>
   );
