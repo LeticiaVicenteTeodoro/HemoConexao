@@ -77,10 +77,10 @@ export default function Home() {
   const [totalDoacoes, setTotalDoacoes] = useState(0);
   const [proximaDoacao, setProximaDoacao] = useState(null);
 
-useEffect(() => {
-  checkFirstAccess();
-  registrarPushToken();
-}, []);
+  useEffect(() => {
+    checkFirstAccess();
+    registrarPushToken();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,86 +106,85 @@ useEffect(() => {
     }
   };
 
-const carregarResumo = async () => {
-  try {
-    const usuarioSalvo = await AsyncStorage.getItem("usuario");
+  const carregarResumo = async () => {
+    try {
+      const usuarioSalvo = await AsyncStorage.getItem("usuario");
 
-    console.log("USUARIO ANTIGO NA HOME:", usuarioSalvo);
+      console.log("USUARIO ANTIGO NA HOME:", usuarioSalvo);
 
-    // Busca o usuário atualmente autenticado no Firebase
-    const firebaseUser = auth.currentUser;
+      // Busca o usuário atualmente autenticado no Firebase
+      const firebaseUser = auth.currentUser;
 
-    if (!firebaseUser) {
-      console.log("NENHUM USUARIO FIREBASE LOGADO");
-      return;
-    }
+      if (!firebaseUser) {
+        console.log("NENHUM USUARIO FIREBASE LOGADO");
+        return;
+      }
 
-    console.log("UID DA HOME:", firebaseUser.uid);
+      console.log("UID DA HOME:", firebaseUser.uid);
 
-    // Busca o usuário atualizado no backend
-    const responseUsuario = await fetch(
-      `${API_URL}/usuario/firebase/${firebaseUser.uid}`
-    );
+      // Busca o usuário atualizado no backend
+      const responseUsuario = await fetch(
+        `${API_URL}/usuario/firebase/${firebaseUser.uid}`
+      );
 
-    const usuarioAtualizado = await responseUsuario.json();
+      const usuarioAtualizado = await responseUsuario.json();
 
-    console.log(
-      "USUARIO ATUALIZADO PELO BACKEND:",
-      usuarioAtualizado
-    );
-
-    if (!usuarioAtualizado.sucesso) {
       console.log(
-        "ERRO AO BUSCAR USUARIO:",
+        "USUARIO ATUALIZADO PELO BACKEND:",
         usuarioAtualizado
       );
-      return;
-    }
 
-    // Salva o usuário correto no celular
-    await AsyncStorage.setItem(
-      "usuario",
-      JSON.stringify(usuarioAtualizado)
-    );
+      if (!usuarioAtualizado.sucesso) {
+        console.log(
+          "ERRO AO BUSCAR USUARIO:",
+          usuarioAtualizado
+        );
+        return;
+      }
 
-    // Atualiza a Home
-    setUsuario(usuarioAtualizado);
-
-    // Busca o histórico usando o ID correto
-    const response = await fetch(
-      `${API_URL}/historico/${usuarioAtualizado.id}`
-    );
-
-    const historico = await response.json();
-
-    console.log(
-      "HISTORICO DA HOME:",
-      historico
-    );
-
-    setTotalDoacoes(historico.length);
-
-    if (historico.length > 0) {
-      const ultimaDoacao = historico[0];
-
-      const proxima = calcularProximaDoacao(
-        ultimaDoacao.data,
-        usuarioAtualizado.sexo
+      // Salva o usuário correto no celular
+      await AsyncStorage.setItem(
+        "usuario",
+        JSON.stringify(usuarioAtualizado)
       );
 
-      setProximaDoacao(proxima);
-    } else {
-      setProximaDoacao(null);
+      // Atualiza a Home
+      setUsuario(usuarioAtualizado);
+
+      // Busca o histórico usando o Firebase UID
+      const response = await fetch(
+        `${API_URL}/historico/firebase/${firebaseUser.uid}`
+      );
+
+      const historico = await response.json();
+
+      console.log(
+        "HISTORICO DA HOME:",
+        historico
+      );
+
+      setTotalDoacoes(historico.length);
+
+      if (historico.length > 0) {
+        const ultimaDoacao = historico[0];
+
+        const proxima = calcularProximaDoacao(
+          ultimaDoacao.data,
+          usuarioAtualizado.sexo
+        );
+
+        setProximaDoacao(proxima);
+      } else {
+        setProximaDoacao(null);
+      }
+
+    } catch (error) {
+      console.log(
+        "ERRO AO CARREGAR RESUMO:",
+        error
+      );
     }
-
-  } catch (error) {
-    console.log(
-      "ERRO AO CARREGAR RESUMO:",
-      error
-    );
-  }
-};
-
+  };
 
   const { marcoAtual, proximoMarco, faltam } =
     calcularMarco(totalDoacoes);

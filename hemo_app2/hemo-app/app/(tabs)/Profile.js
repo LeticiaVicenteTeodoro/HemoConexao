@@ -76,7 +76,7 @@ export default function Profile() {
       }
 
       const responseHistorico = await fetch(
-        `${API_URL}/historico/${usuario.id}`
+        `${API_URL}/historico/firebase/${firebaseUser.uid}`
       );
 
       const historico = await responseHistorico.json();

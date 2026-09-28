@@ -11,7 +11,8 @@ import {
 
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
-import { auth } from "../firebaseConfig";import { router } from "expo-router";
+import { auth } from "../firebaseConfig";
+import { router } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { agendarNotificacaoProximaDoacao } from "./notificacoes";
 
@@ -71,101 +72,114 @@ export default function Registrar() {
     ? estadosCidades[estado]
     : [];
 
-   
-    const verificarDoacao = async () => {
-  try {
-    const usuario = await buscarUsuario();
+  const verificarDoacao = async () => {
+    try {
+      const usuario = await buscarUsuario();
 
-    if (!usuario) {
-      console.log("Usuário Firebase não encontrado.");
-      return;
+      if (!usuario) {
+        console.log("Usuário Firebase não encontrado.");
+        return;
+      }
+
+      const firebaseUser = auth.currentUser;
+
+      if (!firebaseUser) {
+        console.log("Usuário Firebase não autenticado.");
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/historico/firebase/${firebaseUser.uid}`
+      );
+
+      const historico = await response.json();
+
+      if (!historico || historico.length === 0) {
+        return;
+      }
+
+      const ultimaDoacao = historico[0];
+
+      const partes = ultimaDoacao.data.split("/");
+
+      const dataUltima = new Date(
+        partes[2],
+        partes[1] - 1,
+        partes[0]
+      );
+
+      // Temporariamente mantém a regra atual.
+      // Depois podemos ajustar essa regra conforme necessário.
+      const intervalo = 90;
+
+      const proximaDoacao = new Date(dataUltima);
+
+      proximaDoacao.setDate(
+        proximaDoacao.getDate() + intervalo
+      );
+
+      const hoje = new Date();
+
+      const diferenca =
+        proximaDoacao.getTime() - hoje.getTime();
+
+      const dias = Math.ceil(
+        diferenca / (1000 * 60 * 60 * 24)
+      );
+
+      if (dias > 0) {
+        setBloqueado(true);
+        setDiasRestantes(dias);
+      }
+    } catch (error) {
+      console.log("Erro ao verificar doação:", error);
     }
+  };
 
-    const response = await fetch(
-      `${API_URL}/historico/${usuario.id}`
-    );
-
-    const historico = await response.json();
-
-    if (!historico || historico.length === 0) {
-      return;
-    }
-
-    const ultimaDoacao = historico[0];
-
-    const partes = ultimaDoacao.data.split("/");
-
-    const dataUltima = new Date(
-      partes[2],
-      partes[1] - 1,
-      partes[0]
-    );
-
-    // Temporariamente mantém a regra atual.
-    // Depois podemos ajustar sexo quando esse dado
-    // também estiver sendo salvo no Firebase/backend.
-    const intervalo = 90;
-
-    const proximaDoacao = new Date(dataUltima);
-
-    proximaDoacao.setDate(
-      proximaDoacao.getDate() + intervalo
-    );
-
-    const hoje = new Date();
-
-    const diferenca =
-      proximaDoacao.getTime() - hoje.getTime();
-
-    const dias = Math.ceil(
-      diferenca / (1000 * 60 * 60 * 24)
-    );
-
-    if (dias > 0) {
-      setBloqueado(true);
-      setDiasRestantes(dias);
-    }
-  } catch (error) {
-    console.log("Erro ao verificar doação:", error);
-  }
-};
-
-useEffect(() => {
-  verificarDoacao();
-}, []);
-
+  useEffect(() => {
+    verificarDoacao();
+  }, []);
 
   const salvar = async () => {
-
-
     if (
-  !data ||
-  !estado ||
-  !cidade ||
-  !tipo
-) {
-  Alert.alert(
-    "Erro",
-    "Preencha data, estado, cidade e tipo sanguíneo."
-  );
-  return;
-}
+      !data ||
+      !estado ||
+      !cidade ||
+      !tipo
+    ) {
+      Alert.alert(
+        "Erro",
+        "Preencha data, estado, cidade e tipo sanguíneo."
+      );
+      return;
+    }
 
-const dataFormatada = formatarData(data);
+    const dataFormatada = formatarData(data);
 
     try {
       const usuario = await buscarUsuario();
 
-if (!usuario) {
-  Alert.alert(
-    "Erro",
-    "Usuário não encontrado."
-  );
-  return;
-}
+      if (!usuario) {
+        Alert.alert(
+          "Erro",
+          "Usuário não encontrado."
+        );
+        return;
+      }
 
+      const firebaseUser = auth.currentUser;
+
+      if (!firebaseUser) {
+        Alert.alert(
+          "Erro",
+          "Usuário não está autenticado."
+        );
+        return;
+      }
+
+      // Registra a doação diretamente no Firestore
       const response = await fetch(
-        `${API_URL}/doacao?usuario_id=${usuario.id}&data=${encodeURIComponent(
+        `${API_URL}/doacao/firebase/${firebaseUser.uid}?data=${encodeURIComponent(
           dataFormatada
         )}&local=${encodeURIComponent(
           `${cidade}, ${estado}`
@@ -179,52 +193,53 @@ if (!usuario) {
         }
       );
 
-      const resultado =
-        await response.json();
+      const resultado = await response.json();
 
       if (!resultado.sucesso) {
         Alert.alert(
           "Erro",
-          "Falha ao registrar doação."
+          resultado.mensagem ||
+            "Falha ao registrar doação."
         );
         return;
       }
 
-    Alert.alert(
-      "Sucesso",
-      "Doação registrada!"
-    );
+      Alert.alert(
+        "Sucesso",
+        "Doação registrada!"
+      );
 
-    await agendarNotificacaoProximaDoacao(
-      data,
-      usuario?.sexo
-    );
+      await agendarNotificacaoProximaDoacao(
+        data,
+        usuario?.sexo
+      );
 
-    const historicoResponse = await fetch(
-      `${API_URL}/historico/${usuario.id}`
-    );
+      // Busca o histórico atualizado no Firestore
+      const historicoResponse = await fetch(
+        `${API_URL}/historico/firebase/${firebaseUser.uid}`
+      );
 
-    const historico = await historicoResponse.json();
+      const historico = await historicoResponse.json();
 
-    const total = historico.length;
-    const selo = obterSelo(total);
+      const total = historico.length;
+      const selo = obterSelo(total);
 
-    router.push({
-      pathname: "./CompartilharDoacao",
-      params: {
-        data: dataFormatada,
-        local: `${cidade}, ${estado}`,
-        tipo: tipo,
-        total: total,
-        selo: selo,
-      },
-    });
+      router.push({
+        pathname: "./CompartilharDoacao",
+        params: {
+          data: dataFormatada,
+          local: `${cidade}, ${estado}`,
+          tipo: tipo,
+          total: total,
+          selo: selo,
+        },
+      });
 
-    setData(null);
-    setEstado("");
-    setCidade("");
-    setTipo("");
-    setObs("");
+      setData(null);
+      setEstado("");
+      setCidade("");
+      setTipo("");
+      setObs("");
 
     } catch (error) {
       console.log(error);
@@ -236,35 +251,36 @@ if (!usuario) {
     }
   };
 
-if (bloqueado) {
-  return (
-    <View style={styles.bloqueadoContainer}>
-      <Text style={styles.bloqueadoIcon}>
-        🩸
-      </Text>
+  if (bloqueado) {
+    return (
+      <View style={styles.bloqueadoContainer}>
+        <Text style={styles.bloqueadoIcon}>
+          🩸
+        </Text>
 
-      <Text style={styles.bloqueadoTitulo}>
-        Ainda não está na hora
-      </Text>
+        <Text style={styles.bloqueadoTitulo}>
+          Ainda não está na hora
+        </Text>
 
-      <Text style={styles.bloqueadoTexto}>
-        Você ainda precisa aguardar{" "}
-        <Text style={styles.destaque}>
-          {diasRestantes} dias
-        </Text>{" "}
-        para registrar uma nova doação.
-      </Text>
-<TouchableOpacity
-  style={styles.button}
-  onPress={() => router.back()}
->
-  <Text style={styles.buttonText}>
-    Voltar para a Home
-  </Text>
-</TouchableOpacity>
-    </View>
-  );
-}
+        <Text style={styles.bloqueadoTexto}>
+          Você ainda precisa aguardar{" "}
+          <Text style={styles.destaque}>
+            {diasRestantes} dias
+          </Text>{" "}
+          para registrar uma nova doação.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.buttonText}>
+            Voltar para a Home
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -284,27 +300,31 @@ if (bloqueado) {
       </Text>
 
       <TouchableOpacity
-  style={styles.input}
-  onPress={() => setMostrarData(true)}
->
-  <Text
-    style={
-      data
-        ? styles.dateText
-        : styles.placeholderText
-    }
-  >
-    {data
-      ? `📅 ${formatarData(data)}`
-      : "📅 Toque para selecionar a data"}
-  </Text>
-</TouchableOpacity>
+        style={styles.input}
+        onPress={() => setMostrarData(true)}
+      >
+        <Text
+          style={
+            data
+              ? styles.dateText
+              : styles.placeholderText
+          }
+        >
+          {data
+            ? `📅 ${formatarData(data)}`
+            : "📅 Toque para selecionar a data"}
+        </Text>
+      </TouchableOpacity>
 
       {mostrarData && (
         <DateTimePicker
           value={data || new Date()}
           mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
+          display={
+            Platform.OS === "ios"
+              ? "spinner"
+              : "default"
+          }
           onChange={(event, selectedDate) => {
             setMostrarData(false);
 
@@ -467,13 +487,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: "#fff",
   },
-dateText: {
-  color: "#333",
-},
 
-placeholderText: {
-  color: "#aaa",
-},
+  dateText: {
+    color: "#333",
+  },
+
+  placeholderText: {
+    color: "#aaa",
+  },
+
   button: {
     backgroundColor: "#E30613",
     padding: 15,
@@ -489,36 +511,36 @@ placeholderText: {
   },
 
   bloqueadoContainer: {
-  flex: 1,
-  padding: 25,
-  justifyContent: "center",
-  alignItems: "center",
-  backgroundColor: "#fff",
-},
+    flex: 1,
+    padding: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
 
-bloqueadoIcon: {
-  fontSize: 60,
-  marginBottom: 15,
-},
+  bloqueadoIcon: {
+    fontSize: 60,
+    marginBottom: 15,
+  },
 
-bloqueadoTitulo: {
-  fontSize: 25,
-  fontWeight: "bold",
-  color: "#E30613",
-  marginBottom: 15,
-  textAlign: "center",
-},
+  bloqueadoTitulo: {
+    fontSize: 25,
+    fontWeight: "bold",
+    color: "#E30613",
+    marginBottom: 15,
+    textAlign: "center",
+  },
 
-bloqueadoTexto: {
-  fontSize: 16,
-  color: "#555",
-  textAlign: "center",
-  lineHeight: 24,
-  marginBottom: 25,
-},
+  bloqueadoTexto: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 25,
+  },
 
-destaque: {
-  color: "#E30613",
-  fontWeight: "bold",
-},
+  destaque: {
+    color: "#E30613",
+    fontWeight: "bold",
+  },
 });

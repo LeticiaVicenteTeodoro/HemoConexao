@@ -10,7 +10,6 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { auth } from "../firebaseConfig";
 
-
 const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
 
 export default function Historico() {
@@ -23,56 +22,41 @@ export default function Historico() {
   }, []);
 
   const carregar = async () => {
-  try {
-    const user = auth.currentUser;
+    try {
+      const user = auth.currentUser;
 
+      console.log("FIREBASE USER:", user);
+      console.log("FIREBASE UID:", user?.uid);
 
-console.log("FIREBASE USER:", user);
-console.log("FIREBASE UID:", user?.uid);
-    if (!user) {
-      Alert.alert("Erro", "Usuário não está autenticado.");
-      return;
-    }
+      if (!user) {
+        Alert.alert("Erro", "Usuário não está autenticado.");
+        return;
+      }
 
+      // Agora o histórico é buscado diretamente pelo Firebase UID
+      const responseHistorico = await fetch(
+        `${API_URL}/historico/firebase/${user.uid}`
+      );
 
-    
-    const responseUsuario = await fetch(
-      `${API_URL}/usuario/firebase/${user.uid}`
-    );
+      const resultado = await responseHistorico.json();
 
-    const usuario = await responseUsuario.json();
-    console.log("RESPOSTA BACKEND USUARIO:", usuario);
+      console.log("RESPOSTA HISTÓRICO:", resultado);
 
-    if (!responseUsuario.ok || !usuario.sucesso) {
+      if (!responseHistorico.ok) {
+        Alert.alert("Erro", "Não foi possível carregar o histórico.");
+        return;
+      }
+
+      setDados(resultado);
+    } catch (error) {
+      console.log("ERRO HISTÓRICO:", error);
+
       Alert.alert(
         "Erro",
-        usuario.mensagem || "Usuário não encontrado."
+        "Não foi possível carregar o histórico."
       );
-      return;
     }
-
-    const responseHistorico = await fetch(
-      `${API_URL}/historico/${usuario.id}`
-    );
-
-    const resultado = await responseHistorico.json();
-
-    if (!responseHistorico.ok) {
-      Alert.alert("Erro", "Não foi possível carregar o histórico.");
-      return;
-    }
-
-    setDados(resultado);
-  } catch (error) {
-    console.log("ERRO HISTÓRICO:", error);
-
-    Alert.alert(
-      "Erro",
-      "Não foi possível carregar o histórico."
-    );
-  }
-};
-
+  };
 
   const excluir = (id) => {
     Alert.alert(

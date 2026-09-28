@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import subprocess
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth, firestore
 from pydantic import BaseModel
 
 load_dotenv()
@@ -20,6 +20,8 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(  options={
             "projectId": "hemo-conexao"
         })
+
+db = firestore.client()
 
 DB_PATH = "banco.db"
 
@@ -144,6 +146,7 @@ def salvar_usuario_firebase(dados: UsuarioFirebase):
     conn = None
 
     try:
+        # 1. Verifica o token do Firebase
         decoded_token = verificar_token_firebase(dados.id_token)
 
         if not decoded_token:
@@ -154,19 +157,64 @@ def salvar_usuario_firebase(dados: UsuarioFirebase):
 
         firebase_uid = decoded_token["uid"]
         email = decoded_token.get("email", "")
+
         nome = dados.nome
         tipo_sanguineo = dados.tipo_sanguineo
         sexo = dados.sexo
 
-        conn = conectar()
-        cur = conn.cursor()
+        # 2. Procura o usuário no Firestore
+        doc_ref = db.collection("usuarios").document(firebase_uid)
+        doc = doc_ref.get()
 
-        # Verifica se o usuário já existe pelo Firebase UID
+        legacy_id = None
+
+        if doc.exists:
+            dados_firestore = doc.to_dict()
+            legacy_id = dados_firestore.get("legacy_id")
+
+        # 3. Se ainda não tiver legacy_id, procura no SQLite
+        if legacy_id is None:
+            conn = conectar()
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE firebase_uid = ? OR email = ?
+                LIMIT 1
+                """,
+                (firebase_uid, email)
+            )
+
+            usuario = cur.fetchone()
+
+            if usuario:
+                legacy_id = usuario[0]
+
+        # 4. Salva/atualiza o perfil no Firestore
+        doc_ref.set(
+            {
+                "nome": nome,
+                "email": email,
+                "tipo_sanguineo": tipo_sanguineo,
+                "sexo": sexo,
+                "legacy_id": legacy_id
+            },
+            merge=True
+        )
+
+        # 5. Mantém o SQLite como backup
+        if conn is None:
+            conn = conectar()
+            cur = conn.cursor()
+
         cur.execute(
             """
             SELECT id
             FROM usuarios
             WHERE firebase_uid = ?
+            LIMIT 1
             """,
             (firebase_uid,)
         )
@@ -174,6 +222,9 @@ def salvar_usuario_firebase(dados: UsuarioFirebase):
         usuario = cur.fetchone()
 
         if usuario:
+            # Usuário já existe no SQLite
+            legacy_id = usuario[0]
+
             cur.execute(
                 """
                 UPDATE usuarios
@@ -187,45 +238,92 @@ def salvar_usuario_firebase(dados: UsuarioFirebase):
                     nome,
                     email,
                     tipo_sanguineo,
-                    firebase_uid,
-                    sexo
+                    sexo,
+                    firebase_uid
                 )
             )
 
-            conn.commit()
-
-            return {
-                "sucesso": True,
-                "mensagem": "Usuário atualizado.",
-                "id": usuario[0],
-                "firebase_uid": firebase_uid
-            }
-
-        # Cria o usuário no SQLite
-        cur.execute(
-            """
-            INSERT INTO usuarios
-            (nome, email, tipo_sanguineo, sexo, firebase_uid, validado)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                nome,
-                email,
-                tipo_sanguineo,
-                sexo,
-                firebase_uid,
-                1
+        else:
+            # Procura pelo e-mail antes de criar outro usuário
+            cur.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE email = ?
+                LIMIT 1
+                """,
+                (email,)
             )
-        )
+
+            usuario_email = cur.fetchone()
+
+            if usuario_email:
+                legacy_id = usuario_email[0]
+
+                cur.execute(
+                    """
+                    UPDATE usuarios
+                    SET nome = ?,
+                        email = ?,
+                        tipo_sanguineo = ?,
+                        sexo = ?,
+                        firebase_uid = ?,
+                        validado = 1
+                    WHERE id = ?
+                    """,
+                    (
+                        nome,
+                        email,
+                        tipo_sanguineo,
+                        sexo,
+                        firebase_uid,
+                        legacy_id
+                    )
+                )
+
+            else:
+                # Usuário totalmente novo
+                cur.execute(
+                    """
+                    INSERT INTO usuarios
+                    (
+                        nome,
+                        email,
+                        senha,
+                        tipo_sanguineo,
+                        sexo,
+                        firebase_uid,
+                        validado
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        nome,
+                        email,
+                        "",
+                        tipo_sanguineo,
+                        sexo,
+                        firebase_uid,
+                        1
+                    )
+                )
+
+                legacy_id = cur.lastrowid
 
         conn.commit()
 
-        usuario_id = cur.lastrowid
+        # 6. Garante que o Firestore tenha o ID legado correto
+        doc_ref.set(
+            {
+                "legacy_id": legacy_id
+            },
+            merge=True
+        )
 
         return {
             "sucesso": True,
             "mensagem": "Usuário salvo com sucesso.",
-            "id": usuario_id,
+            "id": legacy_id,
             "firebase_uid": firebase_uid
         }
 
@@ -243,119 +341,99 @@ def salvar_usuario_firebase(dados: UsuarioFirebase):
 
 @app.get("/usuario/firebase/{firebase_uid}")
 def buscar_usuario_firebase(firebase_uid: str):
-    conn = None
-
     try:
-        conn = conectar()
-        cur = conn.cursor()
+        # 1. Primeiro, procura o usuário no Firestore
+        doc_ref = db.collection("usuarios").document(firebase_uid)
+        doc = doc_ref.get()
 
-        # 1. Primeiro procura pelo Firebase UID
-        cur.execute(
-            """
-            SELECT id, nome, email, tipo_sanguineo, sexo
-            FROM usuarios
-            WHERE firebase_uid = ?
-            """,
-            (firebase_uid,)
-        )
+        if doc.exists:
+            dados = doc.to_dict()
 
-        usuario = cur.fetchone()
-
-        if usuario:
             return {
                 "sucesso": True,
-                "id": usuario[0],
-                "nome": usuario[1],
-                "email": usuario[2],
-                "tipo_sanguineo": usuario[3] or "",
-                "sexo": usuario[4] or ""
+                "id": dados.get("legacy_id"),
+                "nome": dados.get("nome", ""),
+                "email": dados.get("email", ""),
+                "tipo_sanguineo": dados.get("tipo_sanguineo", ""),
+                "sexo": dados.get("sexo", "")
             }
 
-        # 2. Se não encontrou, busca o usuário no Firebase
-        try:
-            firebase_user = auth.get_user(firebase_uid)
-        except Exception as e:
-            print("ERRO AO BUSCAR USUARIO NO FIREBASE:", e)
-
-            return {
-                "sucesso": False,
-                "mensagem": "Usuário não encontrado no Firebase."
-            }
+        # 2. Se ainda não estiver no Firestore,
+        # busca os dados no Firebase Authentication
+        firebase_user = auth.get_user(firebase_uid)
 
         email = firebase_user.email or ""
         nome = firebase_user.display_name or ""
 
-        # 3. Verifica se já existe usuário com esse e-mail
-        cur.execute(
+        # 3. Procura o usuário antigo no SQLite
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute(
             """
             SELECT id, nome, email, tipo_sanguineo, sexo
             FROM usuarios
-            WHERE email = ?
+            WHERE firebase_uid = ? OR email = ?
+            LIMIT 1
             """,
-            (email,)
+            (firebase_uid, email)
         )
 
-        usuario_email = cur.fetchone()
+        usuario = cursor.fetchone()
 
-        if usuario_email:
-            # Usuário antigo existe, mas ainda não estava vinculado
-            # ao Firebase UID. Fazemos a vinculação.
-            cur.execute(
+        if usuario:
+            legacy_id = usuario[0]
+            nome_sqlite = usuario[1] or nome
+            email_sqlite = usuario[2] or email
+            tipo_sanguineo = usuario[3] or ""
+            sexo = usuario[4] or ""
+
+            # 4. Copia o usuário antigo para o Firestore
+            doc_ref.set({
+                "nome": nome_sqlite,
+                "email": email_sqlite,
+                "tipo_sanguineo": tipo_sanguineo,
+                "sexo": sexo,
+                "legacy_id": legacy_id
+            })
+
+            # Garante que o firebase_uid esteja associado
+            cursor.execute(
                 """
                 UPDATE usuarios
                 SET firebase_uid = ?
                 WHERE id = ?
                 """,
-                (firebase_uid, usuario_email[0])
+                (firebase_uid, legacy_id)
             )
 
             conn.commit()
-
-            print(
-                "USUÁRIO EXISTENTE VINCULADO AO FIREBASE:",
-                firebase_uid,
-                email
-            )
+            conn.close()
 
             return {
                 "sucesso": True,
-                "id": usuario_email[0],
-                "nome": usuario_email[1],
-                "email": usuario_email[2],
-                "tipo_sanguineo": usuario_email[3] or "",
-                "sexo": usuario_email[4] or ""
+                "id": legacy_id,
+                "nome": nome_sqlite,
+                "email": email_sqlite,
+                "tipo_sanguineo": tipo_sanguineo,
+                "sexo": sexo
             }
 
-        # 4. Se realmente não existe, cria um novo usuário
-        cur.execute(
-            """
-            INSERT INTO usuarios
-            (nome, email, tipo_sanguineo, sexo, firebase_uid, validado)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                nome,
-                email,
-                "",
-                "",
-                firebase_uid,
-                1
-            )
-        )
+        conn.close()
 
-        conn.commit()
-
-        usuario_id = cur.lastrowid
-
-        print(
-            "USUÁRIO FIREBASE SINCRONIZADO:",
-            firebase_uid,
-            email
-        )
+        # 5. Usuário existe no Firebase Auth,
+        # mas ainda não possui perfil no Firestore/SQLite
+        doc_ref.set({
+            "nome": nome,
+            "email": email,
+            "tipo_sanguineo": "",
+            "sexo": "",
+            "legacy_id": None
+        })
 
         return {
             "sucesso": True,
-            "id": usuario_id,
+            "id": None,
             "nome": nome,
             "email": email,
             "tipo_sanguineo": "",
@@ -363,37 +441,45 @@ def buscar_usuario_firebase(firebase_uid: str):
         }
 
     except Exception as e:
-        print(
-            "ERRO BUSCAR/SINCRONIZAR USUARIO FIREBASE:",
-            e
-        )
+        print("ERRO BUSCAR USUARIO FIRESTORE:", e)
 
         return {
             "sucesso": False,
             "erro": str(e)
         }
 
-    finally:
-        if conn:
-            conn.close()
-
+    
 class UsuarioAtualizacao(BaseModel):
     nome: str
     tipo_sanguineo: str = ""
     sexo: str = ""
 
 @app.put("/usuario/firebase/{firebase_uid}")
-def atualizar_usuario_firebase(
-    firebase_uid: str,
-    dados: UsuarioAtualizacao
-):
-    conn = None
-
+def atualizar_usuario_firebase(firebase_uid: str, dados: UsuarioAtualizacao):
     try:
-        conn = conectar()
-        cur = conn.cursor()
+        # 1. Atualiza o usuário no Firestore
+        doc_ref = db.collection("usuarios").document(firebase_uid)
 
-        cur.execute(
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return {
+                "sucesso": False,
+                "mensagem": "Usuário não encontrado no Firestore."
+            }
+
+        doc_ref.update({
+            "nome": dados.nome,
+            "tipo_sanguineo": dados.tipo_sanguineo,
+            "sexo": dados.sexo
+        })
+
+        # 2. Mantemos o SQLite atualizado temporariamente
+        # para preservar compatibilidade durante a migração
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute(
             """
             UPDATE usuarios
             SET nome = ?,
@@ -409,32 +495,121 @@ def atualizar_usuario_firebase(
             )
         )
 
-        if cur.rowcount == 0:
-            return {
-                "sucesso": False,
-                "mensagem": "Usuário não encontrado."
-            }
-
         conn.commit()
+        conn.close()
 
         return {
             "sucesso": True,
-            "mensagem": "Perfil atualizado com sucesso."
+            "mensagem": "Usuário atualizado com sucesso!",
+            "nome": dados.nome,
+            "tipo_sanguineo": dados.tipo_sanguineo,
+            "sexo": dados.sexo
         }
 
     except Exception as e:
-        print("ERRO ATUALIZAR USUARIO FIREBASE:", e)
+        print("ERRO ATUALIZAR USUARIO FIRESTORE:", e)
 
         return {
             "sucesso": False,
             "erro": str(e)
         }
 
-    finally:
-        if conn:
-            conn.close()
+@app.get("/historico/firebase/{firebase_uid}")
+def historico_firebase(firebase_uid: str):
+    try:
+        doacoes_ref = (
+            db.collection("usuarios")
+            .document(firebase_uid)
+            .collection("doacoes")
+        )
 
+        docs = doacoes_ref.stream()
 
+        historico = []
+
+        for doc in docs:
+            dados = doc.to_dict()
+
+            historico.append({
+                "id": dados.get("legacy_id", doc.id),
+                "data": dados.get("data", ""),
+                "local": dados.get("local", ""),
+                "tipo": dados.get("tipo", ""),
+                "observacao": dados.get("observacao", "")
+            })
+
+        # Ordena pela data da doação, da mais recente para a mais antiga
+        from datetime import datetime
+
+        def converter_data(item):
+            try:
+                return datetime.strptime(
+                    item["data"],
+                    "%d/%m/%Y"
+                )
+            except (ValueError, TypeError):
+                return datetime.min
+
+        historico.sort(
+            key=converter_data,
+            reverse=True
+        )
+
+        return historico
+
+    except Exception as e:
+        print("ERRO HISTORICO FIRESTORE:", e)
+
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+        
+@app.post("/doacao/firebase/{firebase_uid}")
+def registrar_doacao_firebase(
+    firebase_uid: str,
+    data: str,
+    local: str,
+    tipo: str,
+    observacao: str = ""
+):
+    try:
+        # Verifica se o usuário existe no Firestore
+        usuario_ref = db.collection("usuarios").document(firebase_uid)
+        usuario_doc = usuario_ref.get()
+
+        if not usuario_doc.exists:
+            return {
+                "sucesso": False,
+                "mensagem": "Usuário não encontrado no Firestore."
+            }
+
+        # Cria uma nova doação dentro do usuário
+        doacao_ref = usuario_ref.collection("doacoes").document()
+
+        doacao_ref.set({
+            "data": data,
+            "local": local,
+            "tipo": tipo,
+            "observacao": observacao
+        })
+
+        return {
+            "sucesso": True,
+            "mensagem": "Doação registrada com sucesso!",
+            "id": doacao_ref.id
+        }
+
+    except Exception as e:
+        print("ERRO REGISTRAR DOACAO FIRESTORE:", e)
+
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    
 @app.post("/cadastro")
 def cadastro(nome: str, email: str, senha: str, tipo_sanguineo: str = ""):
     token = str(random.randint(100000, 999999))
