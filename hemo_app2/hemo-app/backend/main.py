@@ -134,6 +134,19 @@ def verificar_token_firebase(id_token: str):
         return None
     
 
+class AgendamentoFirebase(BaseModel):
+    municipio: str = ""
+    municipio_id: str = ""
+
+    unidade: str = ""
+    unidade_id: str = ""
+
+    data: str = ""
+    data_texto: str = ""
+
+    horario: str = ""
+    horario_id: str = ""    
+
 class UsuarioFirebase(BaseModel):
     id_token: str
     nome: str
@@ -948,6 +961,63 @@ def estoque():
 
     except Exception as e:
         print("ERRO ESTOQUE:", e)
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+@app.post("/agendamento/firebase/{firebase_uid}")
+def salvar_agendamento_firebase(
+    firebase_uid: str,
+    dados: AgendamentoFirebase
+):
+    try:
+        usuario_ref = (
+            db.collection("usuarios")
+            .document(firebase_uid)
+        )
+
+        usuario_doc = usuario_ref.get()
+
+        if not usuario_doc.exists:
+            return {
+                "sucesso": False,
+                "mensagem": "Usuário não encontrado no Firestore."
+            }
+
+        agendamento_ref = (
+            usuario_ref
+            .collection("agendamentos")
+            .document()
+        )
+
+        agendamento_ref.set({
+            "municipio": dados.municipio,
+            "municipio_id": dados.municipio_id,
+
+            "unidade": dados.unidade,
+            "unidade_id": dados.unidade_id,
+
+            "data": dados.data,
+            "data_texto": dados.data_texto,
+
+            "horario": dados.horario,
+            "horario_id": dados.horario_id,
+        })
+
+        return {
+            "sucesso": True,
+            "mensagem": "Agendamento salvo com sucesso!",
+            "id": agendamento_ref.id
+        }
+
+    except Exception as e:
+
+        print(
+            "ERRO SALVAR AGENDAMENTO FIRESTORE:",
+            e
+        )
+
         return {
             "sucesso": False,
             "erro": str(e)
