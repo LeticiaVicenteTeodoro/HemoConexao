@@ -63,9 +63,14 @@ export default function Confirmar() {
 
       <Text style={styles.subtitle}>
         Enviamos um link de confirmação para:
+        
       </Text>
 
       <Text style={styles.email}>{email}</Text>
+
+      <Text style={styles.instruction}>
+  Caso não encontre o email na caixa de entrada, verifique também a pasta de spam ou lixo eletrônico.
+</Text>
 
       <Text style={styles.instruction}>
         Abra seu email, clique no link de confirmação e depois
