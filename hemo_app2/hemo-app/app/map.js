@@ -1,16 +1,26 @@
-import { 
-  View, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
   Text,
   Linking,
-  Platform
+  Platform,
 } from "react-native";
 
-import MapView, { Marker } from "react-native-maps";
 import { useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
+
+// Só importa react-native-maps no Android/iOS.
+// Isso evita que o bundle Web tente carregar módulos nativos.
+let MapView = null;
+let Marker = null;
+
+if (Platform.OS !== "web") {
+  const Maps = require("react-native-maps");
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+}
 
 export default function MapScreen() {
   const navigation = useNavigation();
@@ -32,7 +42,7 @@ export default function MapScreen() {
   ];
 
   const goToLocation = (item) => {
-    mapRef.current.animateToRegion({
+    mapRef.current?.animateToRegion({
       latitude: item.latitude,
       longitude: item.longitude,
       latitudeDelta: 0.05,
@@ -51,14 +61,13 @@ export default function MapScreen() {
   if (Platform.OS === "web") {
     return (
       <View style={styles.container}>
-        <Text>Mapa não disponível no navegador</Text>
+        <Text>Mapa disponível somente no aplicativo Android/iOS.</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
@@ -112,8 +121,8 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
+  container: {
+    flex: 1,
   },
 
   backButton: {
