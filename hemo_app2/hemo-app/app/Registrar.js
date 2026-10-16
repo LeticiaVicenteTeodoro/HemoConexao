@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   View,
@@ -18,7 +19,8 @@ import { agendarNotificacaoProximaDoacao } from "./notificacoes";
 
 import estadosCidades from "./cidadeseestados.json";
 
-const API_URL = "https://hemo-backend-683937879829.us-central1.run.app";
+const API_URL =
+  "https://hemo-backend-683937879829.us-central1.run.app";
 
 function obterSelo(total) {
   if (total >= 25) return "❤️ Herói da Vida";
@@ -68,9 +70,7 @@ export default function Registrar() {
   const [diasRestantes, setDiasRestantes] = useState(0);
 
   const estados = Object.keys(estadosCidades);
-  const cidades = estado
-    ? estadosCidades[estado]
-    : [];
+  const cidades = estado ? estadosCidades[estado] : [];
 
   const verificarDoacao = async () => {
     try {
@@ -99,19 +99,15 @@ export default function Registrar() {
       }
 
       const ultimaDoacao = historico[0];
-
       const partes = ultimaDoacao.data.split("/");
 
       const dataUltima = new Date(
-        partes[2],
-        partes[1] - 1,
-        partes[0]
+        Number(partes[2]),
+        Number(partes[1]) - 1,
+        Number(partes[0])
       );
 
-      // Temporariamente mantém a regra atual.
-      // Depois podemos ajustar essa regra conforme necessário.
       const intervalo = 90;
-
       const proximaDoacao = new Date(dataUltima);
 
       proximaDoacao.setDate(
@@ -119,7 +115,6 @@ export default function Registrar() {
       );
 
       const hoje = new Date();
-
       const diferenca =
         proximaDoacao.getTime() - hoje.getTime();
 
@@ -141,12 +136,7 @@ export default function Registrar() {
   }, []);
 
   const salvar = async () => {
-    if (
-      !data ||
-      !estado ||
-      !cidade ||
-      !tipo
-    ) {
+    if (!data || !estado || !cidade || !tipo) {
       Alert.alert(
         "Erro",
         "Preencha data, estado, cidade e tipo sanguíneo."
@@ -160,10 +150,7 @@ export default function Registrar() {
       const usuario = await buscarUsuario();
 
       if (!usuario) {
-        Alert.alert(
-          "Erro",
-          "Usuário não encontrado."
-        );
+        Alert.alert("Erro", "Usuário não encontrado.");
         return;
       }
 
@@ -177,7 +164,6 @@ export default function Registrar() {
         return;
       }
 
-      // Registra a doação diretamente no Firestore
       const response = await fetch(
         `${API_URL}/doacao/firebase/${firebaseUser.uid}?data=${encodeURIComponent(
           dataFormatada
@@ -185,9 +171,7 @@ export default function Registrar() {
           `${cidade}, ${estado}`
         )}&tipo=${encodeURIComponent(
           tipo
-        )}&observacao=${encodeURIComponent(
-          obs
-        )}`,
+        )}&observacao=${encodeURIComponent(obs)}`,
         {
           method: "POST",
         }
@@ -195,7 +179,7 @@ export default function Registrar() {
 
       const resultado = await response.json();
 
-      if (!resultado.sucesso) {
+      if (!response.ok || !resultado.sucesso) {
         Alert.alert(
           "Erro",
           resultado.mensagem ||
@@ -204,17 +188,13 @@ export default function Registrar() {
         return;
       }
 
-      Alert.alert(
-        "Sucesso",
-        "Doação registrada!"
-      );
+      Alert.alert("Sucesso", "Doação registrada!");
 
       await agendarNotificacaoProximaDoacao(
         data,
         usuario?.sexo
       );
 
-      // Busca o histórico atualizado no Firestore
       const historicoResponse = await fetch(
         `${API_URL}/historico/firebase/${firebaseUser.uid}`
       );
@@ -229,9 +209,9 @@ export default function Registrar() {
         params: {
           data: dataFormatada,
           local: `${cidade}, ${estado}`,
-          tipo: tipo,
-          total: total,
-          selo: selo,
+          tipo,
+          total,
+          selo,
         },
       });
 
@@ -240,9 +220,8 @@ export default function Registrar() {
       setCidade("");
       setTipo("");
       setObs("");
-
     } catch (error) {
-      console.log(error);
+      console.log("Erro ao salvar doação:", error);
 
       Alert.alert(
         "Erro",
@@ -254,9 +233,7 @@ export default function Registrar() {
   if (bloqueado) {
     return (
       <View style={styles.bloqueadoContainer}>
-        <Text style={styles.bloqueadoIcon}>
-          🩸
-        </Text>
+        <Text style={styles.bloqueadoIcon}>🩸</Text>
 
         <Text style={styles.bloqueadoTitulo}>
           Ainda não está na hora
@@ -285,14 +262,10 @@ export default function Registrar() {
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        onPress={() =>
-          navigation.goBack()
-        }
+        onPress={() => navigation.goBack()}
         style={styles.backButton}
       >
-        <Text style={styles.backText}>
-          ←
-        </Text>
+        <Text style={styles.backText}>←</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>
@@ -302,6 +275,7 @@ export default function Registrar() {
       <TouchableOpacity
         style={styles.input}
         onPress={() => setMostrarData(true)}
+        activeOpacity={0.7}
       >
         <Text
           style={
@@ -321,20 +295,22 @@ export default function Registrar() {
           value={data || new Date()}
           mode="date"
           display={
-            Platform.OS === "ios"
-              ? "spinner"
-              : "default"
+            Platform.OS === "ios" ? "spinner" : "default"
           }
           onChange={(event, selectedDate) => {
             setMostrarData(false);
 
-            if (selectedDate) {
+            if (
+              event.type !== "dismissed" &&
+              selectedDate
+            ) {
               setData(selectedDate);
             }
           }}
         />
       )}
 
+      {/* Estado */}
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={estado}
@@ -342,98 +318,92 @@ export default function Registrar() {
             setEstado(value);
             setCidade("");
           }}
+          style={styles.picker}
+          dropdownIconColor="#222222"
         >
           <Picker.Item
             label="Selecione o Estado"
             value=""
+            color="#777777"
           />
 
-          {estados.map((estado) => (
+          {estados.map((itemEstado) => (
             <Picker.Item
-              key={estado}
-              label={estado}
-              value={estado}
+              key={itemEstado}
+              label={itemEstado}
+              value={itemEstado}
+              color="#222222"
             />
           ))}
         </Picker>
       </View>
 
-      <View style={styles.pickerContainer}>
+      {/* Cidade */}
+      <View
+        style={[
+          styles.pickerContainer,
+          !estado && styles.pickerDisabled,
+        ]}
+      >
         <Picker
           selectedValue={cidade}
           enabled={estado !== ""}
-          onValueChange={(value) =>
-            setCidade(value)
-          }
+          onValueChange={(value) => setCidade(value)}
+          style={styles.picker}
+          dropdownIconColor="#222222"
         >
           <Picker.Item
             label="Selecione a Cidade"
             value=""
+            color="#777777"
           />
 
-          {cidades.map((cidade) => (
+          {cidades.map((itemCidade) => (
             <Picker.Item
-              key={cidade}
-              label={cidade}
-              value={cidade}
+              key={itemCidade}
+              label={itemCidade}
+              value={itemCidade}
+              color="#222222"
             />
           ))}
         </Picker>
       </View>
 
+      {/* Tipo sanguíneo */}
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={tipo}
-          onValueChange={(value) =>
-            setTipo(value)
-          }
+          onValueChange={(value) => setTipo(value)}
+          style={styles.picker}
+          dropdownIconColor="#222222"
         >
           <Picker.Item
             label="Selecione o Tipo Sanguíneo"
             value=""
+            color="#777777"
           />
 
-          <Picker.Item
-            label="A+"
-            value="A+"
-          />
-          <Picker.Item
-            label="A-"
-            value="A-"
-          />
-          <Picker.Item
-            label="B+"
-            value="B+"
-          />
-          <Picker.Item
-            label="B-"
-            value="B-"
-          />
-          <Picker.Item
-            label="AB+"
-            value="AB+"
-          />
-          <Picker.Item
-            label="AB-"
-            value="AB-"
-          />
-          <Picker.Item
-            label="O+"
-            value="O+"
-          />
-          <Picker.Item
-            label="O-"
-            value="O-"
-          />
+          <Picker.Item label="A+" value="A+" color="#222222" />
+          <Picker.Item label="A-" value="A-" color="#222222" />
+          <Picker.Item label="B+" value="B+" color="#222222" />
+          <Picker.Item label="B-" value="B-" color="#222222" />
+          <Picker.Item label="AB+" value="AB+" color="#222222" />
+          <Picker.Item label="AB-" value="AB-" color="#222222" />
+          <Picker.Item label="O+" value="O+" color="#222222" />
+          <Picker.Item label="O-" value="O-" color="#222222" />
         </Picker>
       </View>
 
+      {/* Observações */}
       <TextInput
         placeholder="Observações"
+        placeholderTextColor="#777777"
         value={obs}
         onChangeText={setObs}
-        style={styles.input}
+        style={[styles.input, styles.observacoes]}
         multiline
+        textAlignVertical="top"
+        selectionColor="#E30613"
       />
 
       <TouchableOpacity
@@ -452,6 +422,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: "#FFFFFF",
   },
 
   backButton: {
@@ -469,31 +440,49 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 20,
+    color: "#222222",
   },
 
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#DDDDDD",
     padding: 12,
     borderRadius: 10,
     marginBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
+    color: "#222222",
+  },
+
+  observacoes: {
+    minHeight: 90,
+    color: "#222222",
+    backgroundColor: "#FFFFFF",
   },
 
   pickerContainer: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#DDDDDD",
     borderRadius: 10,
     marginBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+
+  picker: {
+    color: "#222222",
+    backgroundColor: "#FFFFFF",
+  },
+
+  pickerDisabled: {
+    opacity: 0.65,
   },
 
   dateText: {
-    color: "#333",
+    color: "#222222",
   },
 
   placeholderText: {
-    color: "#aaa",
+    color: "#777777",
   },
 
   button: {
@@ -504,7 +493,7 @@ const styles = StyleSheet.create({
   },
 
   buttonText: {
-    color: "#fff",
+    color: "#FFFFFF",
     textAlign: "center",
     fontWeight: "bold",
     fontSize: 16,
@@ -515,7 +504,7 @@ const styles = StyleSheet.create({
     padding: 25,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
   },
 
   bloqueadoIcon: {
@@ -533,7 +522,7 @@ const styles = StyleSheet.create({
 
   bloqueadoTexto: {
     fontSize: 16,
-    color: "#555",
+    color: "#555555",
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 25,
