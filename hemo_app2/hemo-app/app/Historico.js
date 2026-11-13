@@ -87,7 +87,6 @@ export default function Historico() {
           >
             <Text style={styles.text}>📅 {item.data}</Text>
             <Text style={styles.text}>🏥 {item.local}</Text>
-            <Text style={styles.text}>🩸 {item.tipo}</Text>
             <Text style={styles.text}>
               📝 {item.observacao || "Sem observações"}
             </Text>

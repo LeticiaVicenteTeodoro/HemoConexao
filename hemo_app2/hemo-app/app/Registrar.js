@@ -71,9 +71,6 @@ export default function Registrar() {
   const [dropdownCidade, setDropdownCidade] = useState(false);
   const [buscaCidade, setBuscaCidade] = useState("");
 
-  const [tipo, setTipo] = useState("");
-  const [modalSangue, setModalSangue] = useState(false);
-
   const [obs, setObs] = useState("");
 
   const [bloqueado, setBloqueado] = useState(false);
@@ -167,7 +164,6 @@ export default function Registrar() {
     if (!data) camposFaltando.push("Data");
     if (!estado) camposFaltando.push("Estado");
     if (!cidade) camposFaltando.push("Cidade");
-    if (!tipo) camposFaltando.push("Tipo sanguíneo");
 
     if (camposFaltando.length > 0) {
       Alert.alert(
@@ -202,19 +198,21 @@ export default function Registrar() {
       }
 
       const response = await fetch(
-        `${API_URL}/doacao/firebase/${firebaseUser.uid}?data=${encodeURIComponent(
-          dataFormatada
-        )}&local=${encodeURIComponent(
-          `${cidade}, ${estado}`
-        )}&tipo=${encodeURIComponent(
-          tipo
-        )}&observacao=${encodeURIComponent(obs)}`,
-        {
-          method: "POST",
-        }
-      );
+  `${API_URL}/doacao/firebase/${firebaseUser.uid}?data=${encodeURIComponent(
+    dataFormatada
+  )}&local=${encodeURIComponent(
+    `${cidade}, ${estado}`
+  )}&observacao=${encodeURIComponent(obs)}`,
+  {
+    method: "POST",
+  }
+);
 
       const resultado = await response.json();
+
+
+console.log("STATUS:", response.status);
+console.log("RESPOSTA DO BACKEND:", resultado);
 
       if (!response.ok || !resultado.sucesso) {
         Alert.alert(
@@ -246,7 +244,6 @@ export default function Registrar() {
         params: {
           data: dataFormatada,
           local: `${cidade}, ${estado}`,
-          tipo,
           total,
           selo,
         },
@@ -257,7 +254,6 @@ export default function Registrar() {
       setCidade("");
       setBuscaCidade("");
       setDropdownCidade(false);
-      setTipo("");
       setObs("");
     } catch (error) {
       console.log("Erro ao salvar doação:", error);
@@ -541,92 +537,6 @@ export default function Registrar() {
           </View>
         )}
       </View>
-
-      {/* TIPO SANGUÍNEO */}
-      <TouchableOpacity
-        style={styles.sangueContainer}
-        onPress={() => setModalSangue(true)}
-        activeOpacity={0.8}
-      >
-        <Text
-          style={[
-            styles.sangueTexto,
-            {
-              color: tipo ? "#222222" : "#777777",
-            },
-          ]}
-        >
-          {tipo || "Selecione o Tipo Sanguíneo"}
-        </Text>
-
-        <Text style={styles.sangueSeta}>▼</Text>
-      </TouchableOpacity>
-
-      {/* POPUP DE TIPO SANGUÍNEO - SEMPRE BRANCO */}
-      <Modal
-        visible={modalSangue}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setModalSangue(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>
-              Tipo sanguíneo
-            </Text>
-
-            {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
-              (item) => (
-                <TouchableOpacity
-                  key={item}
-                  style={[
-                    styles.sangueOption,
-                    {
-                      backgroundColor:
-                        tipo === item
-                          ? "#E30613"
-                          : "#FFFFFF",
-                      borderColor:
-                        tipo === item
-                          ? "#E30613"
-                          : "#DDDDDD",
-                    },
-                  ]}
-                  onPress={() => {
-                    setTipo(item);
-                    setModalSangue(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.sangueOptionText,
-                      {
-                        color:
-                          tipo === item
-                            ? "#FFFFFF"
-                            : "#222222",
-                      },
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              )
-            )}
-
-            <TouchableOpacity
-              style={styles.cancelarModal}
-              onPress={() => setModalSangue(false)}
-            >
-              <Text style={styles.cancelarModalText}>
-                Cancelar
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* OBSERVAÇÕES */}
       <TextInput

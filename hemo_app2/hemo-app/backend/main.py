@@ -579,12 +579,12 @@ def historico_firebase(firebase_uid: str):
         }
 
         
+
 @app.post("/doacao/firebase/{firebase_uid}")
 def registrar_doacao_firebase(
     firebase_uid: str,
     data: str,
     local: str,
-    tipo: str,
     observacao: str = ""
 ):
     try:
@@ -598,13 +598,12 @@ def registrar_doacao_firebase(
                 "mensagem": "Usuário não encontrado no Firestore."
             }
 
-        # Cria uma nova doação dentro do usuário
+        # Cria uma nova doação
         doacao_ref = usuario_ref.collection("doacoes").document()
 
         doacao_ref.set({
             "data": data,
             "local": local,
-            "tipo": tipo,
             "observacao": observacao
         })
 
