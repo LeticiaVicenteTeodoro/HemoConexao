@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="HemoConexão — telas do aplicativo" width="100%">
+  <img src="file_000000002060820e9c7b1aa1db706da9.png" alt="HemoConexão — telas do aplicativo" width="100%">
 </p>
 
 <h1 align="center">🩸 HemoConexão</h1>
