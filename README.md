@@ -36,7 +36,7 @@ Poucas pessoas sabem **quando** e **onde** a doação de sangue é mais necessá
 | 📍 | **Mapa** | Encontre unidades de coleta próximas |
 | 📤 | **Compartilhar** | Compartilhe sua doação e inspire outras pessoas |
 | 🔔 | **Notificações** | Avisos quando um tipo sanguíneo estiver em nível crítico |
-| 🔐 | **Login e cadastro** | Autenticação com e-mail/senha e Google |
+| 🔐 | **Login e cadastro** | Autenticação com e-mail/senha |
 
 ## 🧱 Arquitetura
 
