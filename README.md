@@ -103,11 +103,6 @@ Vermelho como cor principal, remetendo ao sangue e à urgência de doar, com sel
 
 🔴 **Crítico** · 🟠 **Alerta** · 🔵 **Estável** · 🟢 **Adequado**
 
-## 🗺️ Próximos passos
-
-- [ ] Notificações push automáticas por tipo sanguíneo
-- [ ] Parcerias com mais hemocentros
-- [ ] Gamificação com conquistas para doadores frequentes
 
 ## 👩‍💻 Autoria
 
